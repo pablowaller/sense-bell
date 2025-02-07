@@ -1,0 +1,44 @@
+{
+  "project_info": {
+    "project_number": "874279177046",
+    "firebase_url": "https://sense-bell-default-rtdb.firebaseio.com",
+    "project_id": "sense-bell",
+    "storage_bucket": "sense-bell.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:874279177046:android:ac17fb2f8bc7e6522224f7",
+        "android_client_info": {
+          "package_name": "sense.bell"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "874279177046-7i0a1s8c93vumt93nih2156l2cstjqps.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBXDJudi3ejfHkBNKxSqpAYfZADj8Iq8Zw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "874279177046-7i0a1s8c93vumt93nih2156l2cstjqps.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ],
+          "analytics_service": {
+            "status": 2,
+            "measurement_id": "G-D0VE0JN5KQ"
+          }
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

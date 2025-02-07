@@ -1,0 +1,136 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\Pablo\\MyProject\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Pablo\\Minerva\\navigations\\stack\\StackNavigator.js||{14D17961-FE51-464D-9111-C4AF11D7D99A}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Pablo\\Minerva\\App.js||{14D17961-FE51-464D-9111-C4AF11D7D99A}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Pablo\\Minerva\\index.js||{14D17961-FE51-464D-9111-C4AF11D7D99A}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Pablo\\MyProject\\App.js||{14D17961-FE51-464D-9111-C4AF11D7D99A}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:App.js||{14D17961-FE51-464D-9111-C4AF11D7D99A}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Pablo\\MyProject\\screens\\HomeScreen.js||{14D17961-FE51-464D-9111-C4AF11D7D99A}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:screens\\HomeScreen.js||{14D17961-FE51-464D-9111-C4AF11D7D99A}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Pablo\\MyProject\\screens\\NotificacionScreen.js||{14D17961-FE51-464D-9111-C4AF11D7D99A}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:screens\\NotificacionScreen.js||{14D17961-FE51-464D-9111-C4AF11D7D99A}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Pablo\\MyProject\\screens\\SettingsScreen.js||{14D17961-FE51-464D-9111-C4AF11D7D99A}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:screens\\SettingsScreen.js||{14D17961-FE51-464D-9111-C4AF11D7D99A}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "StackNavigator.js",
+              "DocumentMoniker": "C:\\Users\\Pablo\\Minerva\\navigations\\stack\\StackNavigator.js",
+              "RelativeDocumentMoniker": "..\\Minerva\\navigations\\stack\\StackNavigator.js",
+              "ToolTip": "C:\\Users\\Pablo\\Minerva\\navigations\\stack\\StackNavigator.js",
+              "RelativeToolTip": "..\\Minerva\\navigations\\stack\\StackNavigator.js",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2024-12-12T21:01:30.898Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "App.js",
+              "DocumentMoniker": "C:\\Users\\Pablo\\Minerva\\App.js",
+              "RelativeDocumentMoniker": "..\\Minerva\\App.js",
+              "ToolTip": "C:\\Users\\Pablo\\Minerva\\App.js",
+              "RelativeToolTip": "..\\Minerva\\App.js",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2024-12-12T21:00:56.048Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "index.js",
+              "DocumentMoniker": "C:\\Users\\Pablo\\Minerva\\index.js",
+              "RelativeDocumentMoniker": "..\\Minerva\\index.js",
+              "ToolTip": "C:\\Users\\Pablo\\Minerva\\index.js",
+              "RelativeToolTip": "..\\Minerva\\index.js",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2024-12-12T21:00:40.894Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "SettingsScreen.js",
+              "DocumentMoniker": "C:\\Users\\Pablo\\MyProject\\screens\\SettingsScreen.js",
+              "RelativeDocumentMoniker": "screens\\SettingsScreen.js",
+              "ToolTip": "C:\\Users\\Pablo\\MyProject\\screens\\SettingsScreen.js",
+              "RelativeToolTip": "screens\\SettingsScreen.js",
+              "ViewState": "AgIAAAYAAAAAAAAAAAAAABAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2024-12-12T20:46:38.624Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "NotificacionScreen.js",
+              "DocumentMoniker": "C:\\Users\\Pablo\\MyProject\\screens\\NotificacionScreen.js",
+              "RelativeDocumentMoniker": "screens\\NotificacionScreen.js",
+              "ToolTip": "C:\\Users\\Pablo\\MyProject\\screens\\NotificacionScreen.js",
+              "RelativeToolTip": "screens\\NotificacionScreen.js",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2024-12-12T20:45:04.362Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "HomeScreen.js",
+              "DocumentMoniker": "C:\\Users\\Pablo\\MyProject\\screens\\HomeScreen.js",
+              "RelativeDocumentMoniker": "screens\\HomeScreen.js",
+              "ToolTip": "C:\\Users\\Pablo\\MyProject\\screens\\HomeScreen.js",
+              "RelativeToolTip": "screens\\HomeScreen.js",
+              "ViewState": "AgIAAAwAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2024-12-12T20:44:14.904Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "App.js",
+              "DocumentMoniker": "C:\\Users\\Pablo\\MyProject\\App.js",
+              "RelativeDocumentMoniker": "App.js",
+              "ToolTip": "C:\\Users\\Pablo\\MyProject\\App.js",
+              "RelativeToolTip": "App.js",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAMAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2024-12-12T20:35:08.826Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

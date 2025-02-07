@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Sense Bell",
+    "slug": "Sense-Bell",
+    "platforms": ["ios", "android", "web"],
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sensebell.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "La aplicación necesita acceso a la cámara para tomar fotos.",
+        "NSLocationWhenInUseUsageDescription": "La aplicación necesita acceso a tu ubicación para registrar tu dirección."
+      }
+    },
+    "android": {
+      "permissions": ["CAMERA", "LOCATION"],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
