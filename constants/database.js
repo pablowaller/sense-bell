@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { getDatabase, ref, set, onValue } from "firebase/database"; 
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
@@ -41,9 +42,32 @@ const auth = initializeAuth(app, {
 
 const db = getFirestore(app);
 const storage = getStorage(app);
+const realtimeDb = getDatabase(app); 
 
 const signIn = (email, password) => {
   return signInWithEmailAndPassword(auth, email, password);
+};
+
+const sendNotificationToFirebase = (message) => {
+  const notificationsRef = ref(realtimeDb, "/notifications");
+  set(notificationsRef, {
+    message: message,
+    timestamp: Date.now(),
+  }).then(() => {
+    console.log("Message sent to Firebase:", message);
+  }).catch(error => {
+    console.error("Error sending message:", error);
+  });
+};
+
+const listenForNotifications = (callback) => {
+  const notificationsRef = ref(realtimeDb, "/notifications");
+  onValue(notificationsRef, (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      callback(data);
+    }
+  });
 };
 
 const URL_API = "https://sense-bell-default-rtdb.firebaseio.com/";
@@ -58,6 +82,9 @@ export {
   analytics,
   storage,
   sendPasswordResetEmail,
+  sendNotificationToFirebase,
+  listenForNotifications,
+  realtimeDb,
   URL_API,
   URL_AUTH_SIGNUP,
   URL_AUTH_SIGNIN
