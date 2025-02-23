@@ -1,8 +1,9 @@
+import './polyfills'; 
 import * as React from 'react';
-import { StyleSheet, Image } from 'react-native'; 
+import { StyleSheet } from 'react-native'; 
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { createDrawerNavigator, DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawer';
+import { createDrawerNavigator } from '@react-navigation/drawer';
 import SignInScreen from './screens/SignInScreen';
 import SignUpScreen from './screens/SignUpScreen';
 import HomeScreen from './screens/HomeScreen';
@@ -12,14 +13,11 @@ import LiveCameraScreen from './screens/LiveCameraScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import CustomDrawerContent from './components/CustomDrawerContent'; 
 import { UserProvider } from './components/UserContext';
-import { app, auth } from './constants/database';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 function App() {
   const Stack = createStackNavigator();
   const Drawer = createDrawerNavigator();
-
-
 
   const Screens = () => {
     return (
@@ -93,22 +91,5 @@ function App() {
     </UserProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  profileContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  profileImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginBottom: 10,
-  },
-  profileName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-});
 
 export default App;
