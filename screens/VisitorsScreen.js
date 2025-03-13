@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Button, Text, FlatList, Image, TextInput, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { firebase } from 'firebase/firestore';
-import { db } from '../constants/database';
-import { collection, onSnapshot, query, where, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { db, sendNotificationToFirebase } from '../constants/database';
+import { collection, onSnapshot, query, where, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
 
 const VisitorsScreen = ({ route }) => {
   const [visitors, setVisitors] = useState([]);
@@ -122,6 +122,9 @@ const VisitorsScreen = ({ route }) => {
           </View>
         </Modal>
       )}
+      <TouchableOpacity style={styles.button} onPress={() => sendNotificationToFirebase()}>
+        <Text style={styles.buttonText}>🔔 Tocar el Timbre</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -130,6 +133,24 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+  },
+  button: {
+    backgroundColor: '#3498db',
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 10,
+    elevation: 3, 
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    marginTop: 10,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   input: {
     height: 40,
