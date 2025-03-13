@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { updateProfile } from 'firebase/auth';
 import { Icon } from 'react-native-elements';
+import { Geolocation} from '../components/Geolocation'
 import { useUserContext } from '../components/UserContext';
 import { auth, storage } from '../constants/database';
 
@@ -193,6 +194,7 @@ const SettingsScreen = () => {
           value={areNotificationsEnabled}
         />
       </View>
+      <Geolocation/>
       <Button title="Save Settings" onPress={handleSaveSettings} />
       {message ? <Text>{message}</Text> : null}
     </ScrollView>
