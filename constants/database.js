@@ -1,7 +1,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
-import { getDatabase, ref, set, onValue } from "firebase/database"; 
+import { getDatabase, ref, set, onValue, push } from "firebase/database"; 
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
@@ -48,27 +48,53 @@ const signIn = (email, password) => {
   return signInWithEmailAndPassword(auth, email, password);
 };
 
-const sendNotificationToFirebase = (message) => {
+const sendNotificationToFirebase = (message, pattern) => {
   const notificationsRef = ref(realtimeDb, "/notifications");
-  set(notificationsRef, {
-    message: message,
-    timestamp: Date.now(),
-  }).then(() => {
-    console.log("Message sent to Firebase:", message);
-  }).catch(error => {
-    console.error("Error sending message:", error);
-  });
+  const currentDate = new Date();
+
+  const options = {
+    timeZone: 'America/Argentina/Buenos_Aires', 
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false, 
+  };
+
+  const formattedDate = currentDate.toLocaleString('es-AR', options);
+
+  const notificationData = {
+    message: message || "", 
+    pattern: pattern || "", 
+    date: formattedDate, 
+  };
+
+  push(notificationsRef, notificationData)
+    .then(() => console.log("🔔 Notificación enviada a Firebase"))
+    .catch(error => console.error("❌ Error al enviar notificación:", error));
 };
 
-const listenForNotifications = (callback) => {
-  const notificationsRef = ref(realtimeDb, "/notifications");
-  onValue(notificationsRef, (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-      callback(data);
-    }
-  });
+const toggleFlash = async () => {
+  const flashRef = ref(realtimeDb, "/flash");
+  try {
+    onValue(flashRef, (snapshot) => {
+      const currentValue = snapshot.val();
+      const newValue = !currentValue;
+
+      set(flashRef, newValue).then(() => {
+        console.log(newValue ? "🔦 Flash activado" : "💡 Flash desactivado");
+      }).catch((error) => {
+        console.error("Error al actualizar el estado del flash:", error);
+      });
+      
+    }, { onlyOnce: true });
+  } catch (error) {
+    console.error("Error al cambiar el estado del flash:", error);
+  }
 };
+
 
 const URL_API = "https://sense-bell-default-rtdb.firebaseio.com/";
 const URL_AUTH_SIGNUP = "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=AIzaSyDQJ-amic1aPwLp1B-XyctBgcMRd6ogYwM";
@@ -83,7 +109,7 @@ export {
   storage,
   sendPasswordResetEmail,
   sendNotificationToFirebase,
-  listenForNotifications,
+  toggleFlash,
   realtimeDb,
   URL_API,
   URL_AUTH_SIGNUP,
