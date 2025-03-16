@@ -1,62 +1,125 @@
-import React, { useState } from 'react';
-import { View, Button, Text, StyleSheet, Platform, ActivityIndicator } from 'react-native';
-import { WebView } from 'react-native-webview';
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  View, Button, Text, StyleSheet, Platform, ActivityIndicator 
+} from 'react-native';
+import { WebView as RNWebView } from 'react-native-webview';
+import WebWebView from 'react-native-web-webview';
+import { FaceDetector } from 'react-native-mlkit-face-detection';
+import { realtimeDb } from '../constants/database';
+import { ref, set, onValue } from "firebase/database"; 
 
-const LiveCameraScreen = ({ navigation }) => {
-  const [imageCaptured, setImageCaptured] = useState(null);
-  const [loading, setLoading] = useState(true); // Estado para controlar la carga del stream
+const WebView = Platform.OS === 'web' ? WebWebView : RNWebView;
 
-  // URL de la transmisión y captura de la ESP32-CAM
-  const cameraUrl = 'http://192.168.0.145/stream'; 
-  const captureImageUrl = 'http://192.168.0.145/cam-hi.jpg'; 
-
-  // Función para capturar imagen
-  const captureImage = () => {
-    setImageCaptured(captureImageUrl);
-    navigation.navigate('VisitorsScreen', { capturedImage: captureImageUrl });
-  };
-
-  // Componente de la cámara
-  const CameraComponent = () => {
-    if (Platform.OS === 'web') {
-      return (
+const CameraComponent = React.memo(({ cameraUrl, onLoad, onError }) => {
+  if (Platform.OS === 'web') {
+    return (
+      <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
         <img
           src={cameraUrl}
-          style={{
-            width: 300,
-            height: 200,
-            objectFit: 'cover',
-          }}
+          style={styles.cameraFeedWeb}
           alt="Live Camera Feed"
-          onError={() => alert('Error al cargar la transmisión. Verifica la conexión.')}
-          onLoad={() => setLoading(false)}
+          onError={onError}
+          onLoad={onLoad}
         />
-      );
-    }
-
-    return (
-      <WebView
-        source={{ uri: cameraUrl }}
-        style={styles.cameraFeed}
-        scrollEnabled={false}
-        javaScriptEnabled={true}
-        onLoadEnd={() => setLoading(false)}
-        onError={() => alert('Error al cargar la transmisión. Verifica la conexión.')}
-      />
+      </div>
     );
+  }
+
+  return (
+    <WebView
+      key="camera-stream" 
+      source={{ uri: cameraUrl }}
+      style={styles.cameraFeed}
+      scrollEnabled={false}
+      javaScriptEnabled={true}
+      onLoadEnd={onLoad}
+      onError={onError}
+    />
+  );
+});
+
+const LiveCameraScreen = ({ navigation }) => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [faces, setFaces] = useState([]);
+  const [flashPressed, setFlashPressed] = useState(false);
+  const [streaming, setStreaming] = useState(null);
+  const canvasRef = useRef(null);
+  const imgRef = useRef(null);
+
+  useEffect(() => {
+    const flashRef = ref(realtimeDb, "flash");
+    onValue(flashRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setFlashPressed(snapshot.val().pressed);
+        console.log("Estado del flash actualizado:", snapshot.val().pressed);
+      }
+    });
+
+    return () => {};
+  }, []);
+
+  const cameraUrl = 'http://192.168.0.145/stream'; 
+
+  useEffect(() => {
+    if (streaming) {
+      const detectFacesInStream = async () => {
+        const faceDetector = new FaceDetector();
+        const detectedFaces = await faceDetector.detectFaces(streaming);
+        setFaces(detectedFaces);
+      };
+
+      const interval = setInterval(() => {
+        detectFacesInStream();
+      }, 2000);  
+
+      return () => clearInterval(interval);
+    }
+  }, [streaming]);
+
+  const handleLoad = () => {
+    setLoading(false);
+    setError(null);
+    setStreaming(cameraUrl);
+  };
+
+  const handleError = () => {
+    setLoading(false);
+    setError('Error al cargar la transmisión. Verifica la conexión.');
+  };
+
+  const toggleFlash = async () => {
+    try {
+      await set(ref(realtimeDb, "flash"), { pressed: !flashPressed });
+    } catch (error) {
+      console.error("Error al actualizar Firebase:", error);
+    }
   };
 
   return (
     <View style={styles.container}>
       {loading && (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0000ff" />
+          <ActivityIndicator color="#0000ff" />
           <Text>Cargando transmisión...</Text>
         </View>
       )}
-      <CameraComponent />
-      <Button title="Capturar Imagen" onPress={captureImage} />
-      {imageCaptured && <Text>Snapshot tomado, redirigiendo...</Text>}
+
+      {error ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <Button title="Reintentar" onPress={() => setLoading(true)} />
+        </View>
+      ) : (
+        <CameraComponent
+          cameraUrl={cameraUrl}
+          onLoad={handleLoad}
+          onError={handleError}
+        />
+      )}
+      <View style={{ marginVertical: 20 }}>
+        <Button title="FLASH LIGHT 📸" onPress={toggleFlash} />
+      </View>
     </View>
   );
 };
@@ -68,13 +131,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cameraFeed: {
-    width: 300,
-    height: 200,
+    flex: 1,
+    width: '100%',
+    aspectRatio: 16 / 9,  
+  },
+  cameraFeedWeb: {
+    width: '100%',
+    height: '100vh',
+    objectFit: 'cover',
   },
   loadingContainer: {
     position: 'absolute',
     top: '50%',
+    left: 0,
+    right: 0,
     alignItems: 'center',
+  },
+  errorContainer: {
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  errorText: {
+    color: 'red',
+    marginBottom: 10,
   },
 });
 
