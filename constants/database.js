@@ -1,7 +1,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
-import { getDatabase, ref, set, onValue, push } from "firebase/database"; 
+import { getDatabase, ref, get, set, onValue, push } from "firebase/database"; 
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
@@ -76,25 +76,37 @@ const sendNotificationToFirebase = (message, pattern) => {
     .catch(error => console.error("❌ Error al enviar notificación:", error));
 };
 
+const initializeFlashNode = async () => {
+  const flashRef = ref(realtimeDb, "/flash");
+  try {
+    const snapshot = await get(flashRef);
+    if (snapshot.exists()) {
+      console.log("El nodo /flash ya existe.");
+    } else {
+      await set(flashRef, false);
+      console.log("Nodo /flash inicializado en false");
+    }
+  } catch (error) {
+    console.error("Error al inicializar el nodo /flash:", error);
+  }
+};
+
 const toggleFlash = async () => {
   const flashRef = ref(realtimeDb, "/flash");
   try {
-    onValue(flashRef, (snapshot) => {
-      const currentValue = snapshot.val();
-      const newValue = !currentValue;
+    const snapshot = await get(flashRef);
+    const currentValue = snapshot.val();
+    const newValue = !currentValue;
 
-      set(flashRef, newValue).then(() => {
-        console.log(newValue ? "🔦 Flash activado" : "💡 Flash desactivado");
-      }).catch((error) => {
-        console.error("Error al actualizar el estado del flash:", error);
-      });
-      
-    }, { onlyOnce: true });
+    console.log("Valor actual:", currentValue);
+    console.log("Nuevo valor:", newValue);
+
+    await set(flashRef, newValue);
+    console.log(newValue ? "🔦 Flash activado" : "💡 Flash desactivado");
   } catch (error) {
     console.error("Error al cambiar el estado del flash:", error);
   }
 };
-
 
 const URL_API = "https://sense-bell-default-rtdb.firebaseio.com/";
 const URL_AUTH_SIGNUP = "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=AIzaSyDQJ-amic1aPwLp1B-XyctBgcMRd6ogYwM";
@@ -107,8 +119,10 @@ export {
   signIn,
   analytics,
   storage,
+  getDatabase,
   sendPasswordResetEmail,
   sendNotificationToFirebase,
+  initializeFlashNode,
   toggleFlash,
   realtimeDb,
   URL_API,
