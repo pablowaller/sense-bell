@@ -4,17 +4,14 @@ import * as ImagePicker from 'expo-image-picker';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { updateProfile } from 'firebase/auth';
 import { Icon } from 'react-native-elements';
-import { Geolocation} from '../components/Geolocation'
 import { useUserContext } from '../components/UserContext';
 import { auth, storage } from '../constants/database';
 
 const SettingsScreen = () => {
   const [previewImageUrl, setPreviewImageUrl] = useState(null);
   const [message, setMessage] = useState('');
-  const [isHapticEnabled, setIsHapticEnabled] = useState(false);
-  const [areNotificationsEnabled, setAreNotificationsEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { profileImage, updateProfileImage } = useUserContext();
+  const { profileImage, updateProfileImage, isHapticEnabled, setIsHapticEnabled, areNotificationsEnabled, setAreNotificationsEnabled } = useUserContext();
 
   const handleProfileImageChange = async (imageUri) => {
     if (!auth.currentUser) {
@@ -37,7 +34,6 @@ const SettingsScreen = () => {
       return null;
     }
   };
-  
 
   const updateUserProfileImage = async (imageUrl) => {
     try {
@@ -103,7 +99,7 @@ const SettingsScreen = () => {
           const capturedImageUri = canvas.toDataURL('image/png');
           stream.getTracks().forEach(track => track.stop());
   
-          handleImage(capturedImageUri); // Handle the captured image
+          handleImage(capturedImageUri);
         });
       } catch (error) {
         console.error('Error accessing webcam:', error);
@@ -125,7 +121,7 @@ const SettingsScreen = () => {
   
         if (!result.canceled) {
           const capturedImageUri = result.assets[0].uri;
-          await handleImage(capturedImageUri); // Handle the captured image
+          await handleImage(capturedImageUri); 
         }
       } catch (error) {
         console.error('Error taking photo:', error);
@@ -165,16 +161,20 @@ const SettingsScreen = () => {
             />
           </View>
         )}
-        <Button
-          title="Select Picture from Gallery"
-          onPress={pickImage}
-          style={styles.button}
-        />
-        <Button
-          title={Platform.OS === 'web' ? 'Take a Picture with Webcam' : 'Take a Picture'}
-          onPress={takePhoto}
-          style={styles.button}
-        />
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Select Picture from Gallery"
+            onPress={pickImage}
+            style={styles.button}
+          />
+        </View>
+        <View style={styles.buttonContainer}>
+          <Button
+            title={Platform.OS === 'web' ? 'Take a Picture with Webcam' : 'Take a Picture'}
+            onPress={takePhoto}
+            style={styles.button}
+          />
+        </View>
       </View>
       <View style={styles.setting}>
         <Text>Haptic Feedback</Text>
@@ -194,8 +194,9 @@ const SettingsScreen = () => {
           value={areNotificationsEnabled}
         />
       </View>
-      <Geolocation/>
-      <Button title="Save Settings" onPress={handleSaveSettings} />
+      <View style={styles.buttonContainer}>
+        <Button title="Save Settings" onPress={handleSaveSettings} />
+      </View>
       {message ? <Text>{message}</Text> : null}
     </ScrollView>
   );
@@ -225,8 +226,12 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
   },
+  buttonContainer: {
+    marginVertical: 10, 
+    width: '100%',
+    alignItems: 'center',
+  },
   button: {
-    marginVertical: 5,
     backgroundColor: '#008CBA',
     borderRadius: 5,
     padding: 10,
