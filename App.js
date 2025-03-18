@@ -1,6 +1,6 @@
-import './polyfills'; 
+import './polyfills';
 import * as React from 'react';
-import { StyleSheet } from 'react-native'; 
+import { StyleSheet, TouchableOpacity } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createDrawerNavigator } from '@react-navigation/drawer';
@@ -11,9 +11,11 @@ import NotificationScreen from './screens/NotificationScreen';
 import VisitorsScreen from './screens/VisitorsScreen';
 import LiveCameraScreen from './screens/LiveCameraScreen';
 import SettingsScreen from './screens/SettingsScreen';
-import CustomDrawerContent from './components/CustomDrawerContent'; 
+import CustomDrawerContent from './components/CustomDrawerContent';
 import { UserProvider } from './components/UserContext';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import Icon from 'react-native-vector-icons/FontAwesome';
+import { COLORS } from './constants/colors';
 
 function App() {
   const Stack = createStackNavigator();
@@ -25,6 +27,9 @@ function App() {
         drawerContent={(props) => <CustomDrawerContent {...props} />}
         screenOptions={{
           drawerStyle: { backgroundColor: '#fff' },
+          headerStyle: { backgroundColor: COLORS.primary },
+          headerTintColor: '#fff',
+          headerTitleStyle: { fontWeight: 'bold' },
         }}
       >
         <Drawer.Screen
@@ -39,11 +44,21 @@ function App() {
         <Drawer.Screen
           name="Notifications"
           component={NotificationScreen}
-          options={{
+          options={({ navigation }) => ({
             drawerIcon: ({ color, size }) => (
               <MaterialCommunityIcons name="bell" color={color} size={size} />
             ),
-          }}
+            headerRight: () => (
+              <TouchableOpacity
+                style={{ marginRight: 15 }}
+                onPress={() => {
+                  navigation.navigate('Notifications', { deleteAll: true });
+                }}
+              >
+                <Icon name="trash" size={24} color="#ff4444" />
+              </TouchableOpacity>
+            ),
+          })}
         />
         <Drawer.Screen
           name="Visitors"
@@ -80,11 +95,25 @@ function App() {
     <UserProvider>
       <NavigationContainer>
         <Stack.Navigator initialRouteName="Sign In">
-          <Stack.Screen name="Sign In" component={SignInScreen} />
-          <Stack.Screen name="Sign Up" component={SignUpScreen} />
+          <Stack.Screen
+            name="Sign In"
+            component={SignInScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Sign Up"
+            component={SignUpScreen}
+            options={{ headerShown: false }}
+          />
           <Stack.Screen
             name="Sense-Bell"
             component={Screens}
+            options={{ 
+              headerShown: false,
+              headerStyle: { backgroundColor: COLORS.primary },
+              headerTintColor: '#fff',
+              headerTitleStyle: { fontWeight: 'bold' },
+            }}
           />
         </Stack.Navigator>
       </NavigationContainer>
