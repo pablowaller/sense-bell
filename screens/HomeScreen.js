@@ -7,7 +7,7 @@ const HomeScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.welcomeText}>Welcome back, {displayName || 'User'}</Text>
+      <Text style={styles.welcomeText}>Bienvenido, {displayName || 'User'}</Text>
     </View>
   );
 };

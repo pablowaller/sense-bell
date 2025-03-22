@@ -127,8 +127,8 @@ const SignUpScreen = ({ navigation }) => {
   
         if (!result.canceled) {
           const capturedImageUri = result.assets[0].uri;
-          setImageUrl(capturedImageUri); // Set the image URL for sign-up
-          setPreviewImageUrl(capturedImageUri); // Set the preview image URL
+          setImageUrl(capturedImageUri); 
+          setPreviewImageUrl(capturedImageUri); 
         }
       } catch (error) {
         console.error('Error taking photo:', error);

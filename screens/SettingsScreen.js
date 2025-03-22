@@ -6,6 +6,32 @@ import { updateProfile } from 'firebase/auth';
 import { Icon } from 'react-native-elements';
 import { useUserContext } from '../components/UserContext';
 import { auth, storage } from '../constants/database';
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+
+const registerForPushNotificationsAsync = async () => {
+  if (!Device.isDevice) {
+    console.log("Las notificaciones push no funcionan en simuladores.");
+    return null;
+  }
+
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+
+  if (existingStatus !== 'granted') {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
+
+  if (finalStatus !== 'granted') {
+    console.log("Se requieren permisos para habilitar notificaciones.");
+    return null;
+  }
+
+  const token = (await Notifications.getExpoPushTokenAsync()).data;
+  console.log("Token de notificación:", token);
+  return token;
+};
 
 const SettingsScreen = () => {
   const [previewImageUrl, setPreviewImageUrl] = useState(null);
@@ -135,24 +161,60 @@ const SettingsScreen = () => {
     setTimeout(() => setMessage(''), 2000);
   };
 
+  const handleRemoveProfileImage = async () => {
+    setPreviewImageUrl(null);
+    updateProfileImage(null);
+  
+    if (!auth.currentUser) return;
+  
+    try {
+      await updateProfile(auth.currentUser, { photoURL: null });
+      console.log("Profile image removed successfully");
+    } catch (error) {
+      console.error("Error removing profile picture:", error);
+      Alert.alert("Error", "Failed to remove profile picture.");
+    }
+  };
+
+  const toggleNotifications = async (value) => {
+    if (!Device.isDevice) {
+      Alert.alert('Error', 'Las notificaciones push no funcionan en simuladores.');
+      return;
+    }
+  
+    if (value) {
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Error', 'Se requieren permisos para habilitar notificaciones.');
+        setAreNotificationsEnabled(false);
+        return;
+      }
+  
+      const token = await registerForPushNotificationsAsync();
+      if (token) {
+        console.log("Token de notificación:", token);
+        setAreNotificationsEnabled(true);
+      } else {
+        Alert.alert('Error', 'No se pudo obtener el token de notificación.');
+        setAreNotificationsEnabled(false);
+      }
+    } else {
+      console.log("Deshabilitando notificaciones...");
+      setAreNotificationsEnabled(false);
+    }
+  };
+  
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Edit Profile</Text>
+      <Text style={styles.title}>Editar Perfil</Text>
       <View style={styles.imageContainer}>
         {(profileImage || previewImageUrl) && (
           <View style={styles.imageWrapper}>
             <TouchableOpacity
-             style={styles.cancelButton}
-             onPress={async () => {
-              setPreviewImageUrl(null);
-              updateProfileImage(null);
-              try {
-                await updateProfile(auth.currentUser, { photoURL: null });
-              } catch (error) {
-                console.error("Error removing profile picture:", error);
-              }
-              }}>
-                <Icon name="close" type="material" size={20} color="white" />
+              style={styles.cancelButton}
+              onPress={handleRemoveProfileImage}
+            >
+              <Icon name="close" type="material" size={20} color="white" />
             </TouchableOpacity>
             <Image
               source={{ uri: (previewImageUrl || profileImage || '').toString() }}
@@ -163,14 +225,14 @@ const SettingsScreen = () => {
         )}
         <View style={styles.buttonContainer}>
           <Button
-            title="Select Picture from Gallery"
+            title="Seleccionar imagen de perfil"
             onPress={pickImage}
             style={styles.button}
           />
         </View>
         <View style={styles.buttonContainer}>
           <Button
-            title={Platform.OS === 'web' ? 'Take a Picture with Webcam' : 'Take a Picture'}
+            title={Platform.OS === 'web' ? 'Sacar foto con webcam' : 'Selfie'}
             onPress={takePhoto}
             style={styles.button}
           />
@@ -190,12 +252,12 @@ const SettingsScreen = () => {
         <Switch
           trackColor={{ false: '#767577', true: '#81b0ff' }}
           thumbColor={areNotificationsEnabled ? '#f5dd4b' : '#f4f3f4'}
-          onValueChange={setAreNotificationsEnabled}
+          onValueChange={toggleNotifications}
           value={areNotificationsEnabled}
         />
       </View>
       <View style={styles.buttonContainer}>
-        <Button title="Save Settings" onPress={handleSaveSettings} />
+        <Button title="GUARDAR CONFIGURACION" onPress={handleSaveSettings} />
       </View>
       {message ? <Text>{message}</Text> : null}
     </ScrollView>

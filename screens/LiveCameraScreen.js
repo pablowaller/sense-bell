@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  View, Button, StyleSheet, Platform, ScrollView
+  View, Button, StyleSheet, Platform, ScrollView, Text
 } from 'react-native';
 import { WebView as RNWebView } from 'react-native-webview';
 import WebWebView from 'react-native-web-webview';
@@ -41,18 +41,35 @@ const CameraComponent = React.memo(({ cameraUrl, onLoad, onError }) => {
 const LiveCameraScreen = ({ navigation }) => {
   const [flashPressed, setFlashPressed] = useState(false);
   const [capturePressed, setCapturePressed] = useState(false);
-  
+  const [captureStatus, setCaptureStatus] = useState("");
+
   useEffect(() => {
     const flashRef = ref(realtimeDb, "flash");
-    
-    const unsubscribe = onValue(flashRef, (snapshot) => {
+    const captureRef = ref(realtimeDb, "capture");
+
+    const unsubscribeFlash = onValue(flashRef, (snapshot) => {
       if (snapshot.exists()) {
         setFlashPressed(snapshot.val().pressed);
         console.log("Estado del flash actualizado:", snapshot.val().pressed);
       }
     });
 
-    return () => unsubscribe(); 
+    const unsubscribeCapture = onValue(captureRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setCapturePressed(snapshot.val().pressed);
+        console.log("Estado de captura actualizado:", snapshot.val().pressed);
+        if (snapshot.val().pressed) {
+          setCaptureStatus("📸 Captura solicitada");
+        } else {
+          setCaptureStatus("");
+        }
+      }
+    });
+
+    return () => {
+      unsubscribeFlash();
+      unsubscribeCapture();
+    };
   }, []);
 
   const cameraUrl = 'http://192.168.0.145/stream'; 
@@ -67,8 +84,15 @@ const LiveCameraScreen = ({ navigation }) => {
 
   const captureImage = async () => {
     try {
-      await set(ref(realtimeDb, "capture"), { pressed: !capturePressed });
+      // Activar la captura
+      await set(ref(realtimeDb, "capture"), { pressed: true });
       console.log("📸 Solicitud de captura enviada");
+
+      // Desactivar la captura después de un breve retraso
+      setTimeout(async () => {
+        await set(ref(realtimeDb, "capture"), { pressed: false });
+        console.log("🔄 Captura desactivada");
+      }, 1000); // 1 segundo de retraso
     } catch (error) {
       console.error("❌ Error al solicitar captura:", error);
     }
@@ -83,6 +107,7 @@ const LiveCameraScreen = ({ navigation }) => {
         <Button title="FLASH LIGHT 📸" onPress={toggleFlash} />
         <Button title="CAPTURAR IMAGEN 📷" onPress={captureImage} />
       </View>
+      {captureStatus ? <Text style={styles.statusText}>{captureStatus}</Text> : null}
     </ScrollView>
   );
 };
@@ -96,7 +121,7 @@ const styles = StyleSheet.create({
   },
   webContainer: {
     width: '100%',
-    maxHeight: '80vh', // Permite que haya espacio debajo
+    maxHeight: '80vh',
     display: 'flex',
     justifyContent: 'center',
   },
@@ -107,7 +132,7 @@ const styles = StyleSheet.create({
   },
   cameraFeedWeb: {
     width: '100%',
-    maxHeight: '80vh', // No ocupa toda la pantalla
+    maxHeight: '80vh',
     objectFit: 'cover',
   },
   buttonContainer: {
@@ -122,6 +147,11 @@ const styles = StyleSheet.create({
         gap: 20,
       },
     }),
+  },
+  statusText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: 'green',
   },
 });
 

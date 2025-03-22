@@ -1,129 +1,125 @@
-import React, { useEffect, useState } from 'react';
-import { View, Button, Text, FlatList, Image, TextInput, StyleSheet, TouchableOpacity, Modal } from 'react-native';
-import { firebase } from 'firebase/firestore';
-import { db, sendNotificationToFirebase } from '../constants/database';
-import { collection, onSnapshot, query, where, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import React, { useEffect, useState, useRef } from "react";
+import { View, Text, FlatList, StyleSheet, Animated, TouchableOpacity } from "react-native";
+import { realtimeDb } from "../constants/database";
+import { ref as databaseRef, onValue, remove } from "firebase/database";
+import Icon from 'react-native-vector-icons/FontAwesome';
+import { RectButton } from 'react-native-gesture-handler';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
 
-const VisitorsScreen = ({ route }) => {
+const VisitorsScreen = ({ route, navigation }) => {
   const [visitors, setVisitors] = useState([]);
-  const [capturedImage, setCapturedImage] = useState(route?.params?.capturedImage);
-  const [visitorName, setVisitorName] = useState('');
-  const [selectedVisitor, setSelectedVisitor] = useState(null); 
-  const [modalVisible, setModalVisible] = useState(false); 
+  const [displayedVisitors, setDisplayedVisitors] = useState(new Set());
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
 
   useEffect(() => {
-    const q = query(collection(db, 'visitors'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const visitorsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      setVisitors(visitorsData);
+    const visitorsRef = databaseRef(realtimeDb, "attendance"); // Referencia a la base de datos
+    const unsubscribe = onValue(visitorsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const visitorsList = Object.keys(data).map((key) => ({
+          id: key,
+          ...data[key],
+        }));
+        const newVisitors = visitorsList.reverse();
+
+        // Identificar nuevos visitantes
+        const newVisitorIds = newVisitors.map((visitor) => visitor.id);
+        const currentDisplayedIds = Array.from(displayedVisitors);
+        const addedVisitors = newVisitorIds.filter((id) => !currentDisplayedIds.includes(id));
+
+        // Aplicar fading solo a los nuevos visitantes
+        if (addedVisitors.length > 0) {
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }).start(() => {
+            // Agregar los nuevos IDs al estado de visitantes mostrados
+            setDisplayedVisitors(new Set([...currentDisplayedIds, ...addedVisitors]));
+          });
+        }
+
+        setVisitors(newVisitors);
+      } else {
+        setVisitors([]);
+      }
     });
 
-    return () => unsubscribe();
-  }, []);
-
-  const addVisitorToFirebase = async (imageUri, facialHash, name) => {
-    const visitorsRef = collection(db, 'visitors');
-    const snapshot = await query(visitorsRef, where("facialHash", "==", facialHash));
-
-    if (snapshot.empty) {
-      const newVisitor = {
-        name: name || 'Unknown visitor',
-        photo: imageUri,
-        facialHash: facialHash,
-      };
-      await addDoc(visitorsRef, newVisitor);
-    } else {
-      console.log('Visitor already registered');
-    }
-  };
-
-  const captureFaceHash = (image) => {
-    return image + "_hash"; 
-  };
+    return () => unsubscribe(); // Limpiar la suscripción al desmontar el componente
+  }, [displayedVisitors]);
 
   useEffect(() => {
-    if (capturedImage && visitorName) {
-      const facialHash = captureFaceHash(capturedImage);
-      addVisitorToFirebase(capturedImage, facialHash, visitorName);
+    if (route.params?.deleteAll) {
+      const visitorsRef = databaseRef(realtimeDb, "attendance");
+      remove(visitorsRef).then(() => {
+        setVisitors([]);
+        setDisplayedVisitors(new Set()); // Limpiar los visitantes mostrados
+      });
     }
-  }, [capturedImage, visitorName]);
+  }, [route.params?.deleteAll]);
 
-  const handleDelete = async (visitorId) => {
-    const visitorRef = doc(db, 'visitors', visitorId);
-    await deleteDoc(visitorRef);
-    setModalVisible(false); 
+  const handleDeleteVisitor = (id) => {
+    const visitorRef = databaseRef(realtimeDb, `attendance/${id}`);
+    remove(visitorRef).then(() => {
+      if (displayedVisitors.has(id)) {
+        const newDisplayedVisitors = new Set(displayedVisitors);
+        newDisplayedVisitors.delete(id);
+        setDisplayedVisitors(newDisplayedVisitors);
+      }
+    });
   };
 
-  const handleModal = (visitor) => {
-    setSelectedVisitor(visitor);
-    setModalVisible(true); 
+  const renderRightActions = (progress, dragX, id) => {
+    const scale = dragX.interpolate({
+      inputRange: [-100, 0],
+      outputRange: [1, 0],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <RectButton style={styles.deleteButton} onPress={() => handleDeleteVisitor(id)}>
+        <Animated.View style={{ transform: [{ scale }] }}>
+          <Icon name="trash" size={24} color="#fff" />
+        </Animated.View>
+      </RectButton>
+    );
   };
+
+  const renderItem = ({ item }) => (
+    <Swipeable
+      renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.id)}
+    >
+      <Animated.View
+        style={{
+          opacity: displayedVisitors.has(item.id) ? 1 : fadeAnim, // Aplicar fading solo a nuevos visitantes
+        }}
+      >
+        <View style={styles.visitorItem}>
+          <Text style={styles.visitorName}>🔹 {item.name} está en la puerta!</Text>
+          <Text style={styles.timestamp}>{item.timestamp}</Text>
+        </View>
+      </Animated.View>
+    </Swipeable>
+  );
 
   return (
     <View style={styles.container}>
-      {capturedImage && (
-        <View>
-          <Text>Enter the visitor's name:</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Nombre del visitante"
-            value={visitorName}
-            onChangeText={setVisitorName}
-          />
-          <Button
-            title="Agregar Visitante"
-            onPress={() => {
-              if (visitorName) {
-                const facialHash = captureFaceHash(capturedImage);
-                addVisitorToFirebase(capturedImage, facialHash, visitorName);
-              }
-            }}
-          />
-        </View>
-      )}
-
+      <Text style={styles.title}>👥 Visitantes recientes</Text>
       {visitors.length === 0 ? (
-        <Text>No visitors yet.</Text>
+        <Text style={styles.emptyMessage}>Aún no hay visitantes.</Text>
       ) : (
         <FlatList
           data={visitors}
-          keyExtractor={(item, index) => `${item.name}-${index}`}
-          renderItem={({ item }) => (
-            <View style={styles.visitorContainer}>
-              <Text style={styles.visitorName}>{item.name}</Text>
-              <Image
-                source={{ uri: item.photo }}
-                style={styles.visitorPhoto}
-              />
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => handleModal(item)} 
-              >
-                <Text style={styles.deleteText}>🗑️</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
         />
       )}
-
-      {selectedVisitor && (
-        <Modal
-          transparent={true}
-          visible={modalVisible}
-          animationType="fade"
-          onRequestClose={() => setModalVisible(false)}
-        >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <Text>Are you sure you want to delete {selectedVisitor.name}?</Text>
-              <Button title="Yes" onPress={() => handleDelete(selectedVisitor.id)} />
-              <Button title="No" onPress={() => setModalVisible(false)} />
-            </View>
-          </View>
-        </Modal>
-      )}
-      <TouchableOpacity style={styles.button} onPress={() => sendNotificationToFirebase()}>
-        <Text style={styles.buttonText}>🔔 Tocar el Timbre</Text>
+      <TouchableOpacity
+        style={styles.addVisitorLink}
+        onPress={() => navigation.navigate('LogVisitors')}
+      >
+        <Text style={styles.addVisitorText}>¿Añadir visitantes? Click aquí</Text>
       </TouchableOpacity>
     </View>
   );
@@ -132,70 +128,62 @@ const VisitorsScreen = ({ route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#f5f5f5",
     padding: 20,
   },
-  button: {
-    backgroundColor: '#3498db',
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 10,
-    elevation: 3, 
-    shadowColor: '#000',
-    shadowOffset: { width: 2, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    marginTop: 10,
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  input: {
-    height: 40,
-    borderColor: 'gray',
-    borderWidth: 1,
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
     marginBottom: 20,
-    paddingLeft: 10,
+    color: "#333",
   },
-  visitorContainer: {
+  visitorItem: {
+    backgroundColor: "#fff",
+    padding: 15,
     marginBottom: 10,
-    padding: 10,
-    borderWidth: 1,
-    borderRadius: 5,
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   visitorName: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
   },
-  visitorPhoto: {
-    width: 100,
-    height: 100,
-    marginTop: 10,
+  timestamp: {
+    fontSize: 14,
+    color: "#777",
+    marginTop: 5,
   },
   deleteButton: {
-    marginTop: 10,
-    padding: 5,
-    backgroundColor: 'red',
-    borderRadius: 5,
+    backgroundColor: "#ff4444",
+    justifyContent: "center",
+    alignItems: "center",
+    width: 80,
+    height: "100%",
+    borderRadius: 8,
+    marginBottom: 10,
   },
-  deleteText: {
-    color: 'white',
-    fontSize: 18,
+  emptyMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 20,
+    color: '#777',
   },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  addVisitorLink: {
+    marginTop: 20,
+    padding: 10,
+    backgroundColor: "#0bb4bf",
+    borderRadius: 8,
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
-  modalContent: {
-    width: 300,
-    padding: 20,
-    backgroundColor: 'white',
-    borderRadius: 10,
-    alignItems: 'center',
+  addVisitorText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

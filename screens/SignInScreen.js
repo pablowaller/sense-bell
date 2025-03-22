@@ -6,7 +6,7 @@ import { auth, signIn, sendPasswordResetEmail } from "../constants/database";
 import { useUserContext } from '../components/UserContext';
 
 const SignInScreen = ({ navigation }) => {
-  const { updateProfileImage, updateDisplayName } = useUserContext(); // Usa el hook
+  const { updateProfileImage, updateDisplayName } = useUserContext(); 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSecureEntry, setIsSecureEntry] = useState(true);
@@ -41,18 +41,18 @@ const SignInScreen = ({ navigation }) => {
   };
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        updateProfileImage(user.photoURL || "https://static-00.iconduck.com/assets.00/gender-neutral-user-icon-931x1024-d5xhj95c.png");
-        updateDisplayName(user.displayName || "User"); 
-        navigation.replace("Sense-Bell");
-      }
-    });
-  
-    return () => {
-      unsubscribe();
-    };
-  }, [navigation]);
+  const unsubscribe = auth.onAuthStateChanged((user) => {
+    if (user) {
+      updateProfileImage(user.photoURL || "https://static-00.iconduck.com/assets.00/gender-neutral-user-icon-931x1024-d5xhj95c.png");
+      updateDisplayName(user.displayName || "User"); 
+      navigation.replace("Sense-Bell");
+    }
+  });
+
+  return () => {
+    unsubscribe();
+  };
+}, [navigation]);
   
   return (
     <AuthScreenWrapper
@@ -80,7 +80,10 @@ const SignInScreen = ({ navigation }) => {
             type="material"
             size={20}
             color="gray"
-            onPress={toggleSecureEntry}
+            onPress={() => {
+              console.log("Toggle secure entry"); 
+              toggleSecureEntry();
+            }}
           />
         }
       />

@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Animated, Vibration, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Animated, Vibration } from 'react-native';
 import { realtimeDb } from "../constants/database";
-import { ref, onValue, push, remove } from "firebase/database";
+import { ref, onValue, remove } from "firebase/database";
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { RectButton } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
-import PushNotification from "react-native-push-notification";
 import { useUserContext } from '../components/UserContext';
 
-const NotificationScreen = () => {
+const NotificationScreen = ({ route }) => {
   const [notifications, setNotifications] = useState([]);
-  const { isHapticEnabled, areNotificationsEnabled, incrementUnreadNotifications } = useUserContext();
+  const [unreadNotifications, setUnreadNotifications] = useState(new Set());
+  const [animations, setAnimations] = useState(new Map()); // Mapa para almacenar animaciones
+  const { isHapticEnabled, incrementUnreadNotifications, resetUnreadNotifications } = useUserContext();
 
   useEffect(() => {
     const notificationsRef = ref(realtimeDb, "doorbell");
@@ -22,32 +23,87 @@ const NotificationScreen = () => {
           id: key,
           ...data[key]
         }));
-        setNotifications(notificationList.reverse());
+        const reversedList = notificationList.reverse();
 
-        // Activar vibración y notificación push si hay una nueva notificación
-        if (notificationList.length > 0 && (isHapticEnabled || areNotificationsEnabled)) {
+        // Verificar si hay nuevas notificaciones
+        const newNotifications = reversedList.filter(
+          (notification) => !notifications.some((n) => n.id === notification.id)
+        );
+
+        // Incrementar el contador solo para nuevas notificaciones
+        if (newNotifications.length > 0) {
+          incrementUnreadNotifications(newNotifications.length);
           if (isHapticEnabled) {
-            Vibration.vibrate();
+            Vibration.vibrate(500);
           }
-          if (areNotificationsEnabled) {
-            PushNotification.localNotification({
-              title: "Doorbell",
-              message: "🔔 Alguien tocó el timbre!",
-            });
-          }
-          incrementUnreadNotifications();
+
+          // Crear animaciones para las nuevas notificaciones
+          const newAnimations = new Map(animations);
+          newNotifications.forEach((notification) => {
+            const opacity = new Animated.Value(0); // Iniciar con opacidad 0
+            newAnimations.set(notification.id, opacity);
+
+            // Iniciar la animación de fading in
+            Animated.timing(opacity, {
+              toValue: 1,
+              duration: 1000,
+              useNativeDriver: true,
+            }).start();
+          });
+          setAnimations(newAnimations);
         }
+
+        // Actualizar la lista de notificaciones
+        setNotifications(reversedList);
+
+        // Marcar las nuevas notificaciones como no leídas
+        const newUnreadNotifications = new Set(unreadNotifications);
+        newNotifications.forEach((notification) => {
+          newUnreadNotifications.add(notification.id);
+        });
+        setUnreadNotifications(newUnreadNotifications);
       } else {
         setNotifications([]);
+        resetUnreadNotifications();
       }
     });
 
     return () => {};
-  }, [isHapticEnabled, areNotificationsEnabled]);
+  }, [isHapticEnabled]);
+
+  useEffect(() => {
+    if (route.params?.deleteAll) {
+      const notificationsRef = ref(realtimeDb, "doorbell");
+      remove(notificationsRef).then(() => {
+        setNotifications([]);
+        resetUnreadNotifications();
+        setAnimations(new Map()); // Limpiar animaciones
+      });
+    }
+  }, [route.params?.deleteAll]);
 
   const handleDeleteNotification = (id) => {
     const notificationRef = ref(realtimeDb, `doorbell/${id}`);
-    remove(notificationRef);
+    remove(notificationRef).then(() => {
+      if (unreadNotifications.has(id)) {
+        const newUnreadNotifications = new Set(unreadNotifications);
+        newUnreadNotifications.delete(id);
+        setUnreadNotifications(newUnreadNotifications);
+      }
+
+      // Eliminar la animación asociada a la notificación
+      const newAnimations = new Map(animations);
+      newAnimations.delete(id);
+      setAnimations(newAnimations);
+    });
+  };
+
+  const markAsRead = (id) => {
+    if (unreadNotifications.has(id)) {
+      const newUnreadNotifications = new Set(unreadNotifications);
+      newUnreadNotifications.delete(id);
+      setUnreadNotifications(newUnreadNotifications);
+    }
   };
 
   const renderRightActions = (progress, dragX, id) => {
@@ -66,24 +122,34 @@ const NotificationScreen = () => {
     );
   };
 
-  const renderItem = ({ item }) => (
-    <Swipeable
-      renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.id)}
-    >
-      <View style={styles.notificationItem}>
-        <Text style={styles.notificationText}>🔔 Alguien tocó el timbre!</Text>
-        <Text style={styles.timestampText}>{item.timestamp}</Text>
-      </View>
-    </Swipeable>
-  );
+  const renderItem = ({ item }) => {
+    const opacity = animations.get(item.id) || new Animated.Value(1); // Usar la animación individual
+
+    return (
+      <Swipeable
+        renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.id)}
+        onSwipeableOpen={() => markAsRead(item.id)}
+      >
+        <Animated.View style={[styles.notificationItem, { opacity }]}>
+          <Text style={styles.notificationText}>🔔 Alguien tocó el timbre!</Text>
+          <Text style={styles.timestampText}>{item.timestamp}</Text>
+        </Animated.View>
+      </Swipeable>
+    );
+  };
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={notifications}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-      />
+      {/* Lista de notificaciones */}
+      {notifications.length === 0 ? (
+        <Text style={styles.emptyMessage}>Aún no hay notificaciones.</Text>
+      ) : (
+        <FlatList
+          data={notifications}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+        />
+      )}
     </View>
   );
 };
@@ -123,6 +189,12 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 8,
     marginBottom: 10,
+  },
+  emptyMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 20,
+    color: '#777',
   },
 });
 
