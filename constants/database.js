@@ -22,11 +22,7 @@ const firebaseConfig = {
 let app;
 let analytics;
 
-if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
-} else {
-  app = getApp();
-}
+app = initializeApp(firebaseConfig);
 
 if (Platform.OS === "web") {
   isSupported().then((supported) => {
@@ -36,9 +32,15 @@ if (Platform.OS === "web") {
   });
 }
 
-const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(ReactNativeAsyncStorage),
-});
+let auth;
+
+if (Platform.OS === "web") {
+  auth = getAuth(app);
+} else {
+  auth = initializeAuth(app, {
+    persistence: getReactNativePersistence(ReactNativeAsyncStorage), 
+  });
+}
 
 const db = getFirestore(app);
 const storage = getStorage(app);
