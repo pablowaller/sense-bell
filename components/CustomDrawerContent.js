@@ -7,7 +7,7 @@ import { signOut } from 'firebase/auth';
 import { useUserContext } from '../components/UserContext';
 
 const CustomDrawerContent = (props) => {
-  const { profileImage, displayName, updateProfileImage } = useUserContext();
+  const { profileImage, displayName, updateProfileImage, unreadNotifications } = useUserContext();
   const [userName, setUserName] = useState(displayName || 'User');
 
   useEffect(() => {
@@ -25,7 +25,6 @@ const CustomDrawerContent = (props) => {
     fetchUserData();
   }, [profileImage]);
 
-
   const handleSignOut = () => {
     auth.signOut()
       .then(() => {
@@ -33,7 +32,6 @@ const CustomDrawerContent = (props) => {
       })
       .catch(error => alert(error.message));
   };
-
 
   return (
     <DrawerContentScrollView {...props} contentContainerStyle={styles.container}>
@@ -45,7 +43,15 @@ const CustomDrawerContent = (props) => {
         />
         <Text style={styles.userName}>{userName}</Text>
       </View>
+
       <DrawerItemList {...props} />
+
+      {unreadNotifications > 0 && (
+        <View style={styles.notificationBadge}>
+          <Text style={styles.notificationBadgeText}>{unreadNotifications}</Text>
+        </View>
+      )}
+
       <TouchableOpacity style={styles.logoutButton} onPress={handleSignOut}>
         <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
@@ -81,6 +87,22 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     color: 'white',
+    fontWeight: 'bold',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    right: 20,
+    top: 120, 
+    backgroundColor: 'red',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notificationBadgeText: {
+    color: 'white',
+    fontSize: 12,
     fontWeight: 'bold',
   },
 });
