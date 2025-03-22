@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  View, Button, Text, StyleSheet, Platform, ActivityIndicator 
+  View, Button, StyleSheet, Platform, ScrollView
 } from 'react-native';
 import { WebView as RNWebView } from 'react-native-webview';
 import WebWebView from 'react-native-web-webview';
-import { FaceDetector } from 'react-native-mlkit-face-detection';
 import { realtimeDb } from '../constants/database';
 import { ref, set, onValue } from "firebase/database"; 
 
@@ -13,7 +12,7 @@ const WebView = Platform.OS === 'web' ? WebWebView : RNWebView;
 const CameraComponent = React.memo(({ cameraUrl, onLoad, onError }) => {
   if (Platform.OS === 'web') {
     return (
-      <div style={{ position: 'relative', width: '100%', height: '100vh' }}>
+      <div style={styles.webContainer}>
         <img
           src={cameraUrl}
           style={styles.cameraFeedWeb}
@@ -34,59 +33,29 @@ const CameraComponent = React.memo(({ cameraUrl, onLoad, onError }) => {
       javaScriptEnabled={true}
       onLoadEnd={onLoad}
       onError={onError}
+      mixedContentMode="always"
     />
   );
 });
 
 const LiveCameraScreen = ({ navigation }) => {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [faces, setFaces] = useState([]);
   const [flashPressed, setFlashPressed] = useState(false);
-  const [streaming, setStreaming] = useState(null);
-  const canvasRef = useRef(null);
-  const imgRef = useRef(null);
-
+  const [capturePressed, setCapturePressed] = useState(false);
+  
   useEffect(() => {
     const flashRef = ref(realtimeDb, "flash");
-    onValue(flashRef, (snapshot) => {
+    
+    const unsubscribe = onValue(flashRef, (snapshot) => {
       if (snapshot.exists()) {
         setFlashPressed(snapshot.val().pressed);
         console.log("Estado del flash actualizado:", snapshot.val().pressed);
       }
     });
 
-    return () => {};
+    return () => unsubscribe(); 
   }, []);
 
   const cameraUrl = 'http://192.168.0.145/stream'; 
-
-  useEffect(() => {
-    if (streaming) {
-      const detectFacesInStream = async () => {
-        const faceDetector = new FaceDetector();
-        const detectedFaces = await faceDetector.detectFaces(streaming);
-        setFaces(detectedFaces);
-      };
-
-      const interval = setInterval(() => {
-        detectFacesInStream();
-      }, 2000);  
-
-      return () => clearInterval(interval);
-    }
-  }, [streaming]);
-
-  const handleLoad = () => {
-    setLoading(false);
-    setError(null);
-    setStreaming(cameraUrl);
-  };
-
-  const handleError = () => {
-    setLoading(false);
-    setError('Error al cargar la transmisión. Verifica la conexión.');
-  };
 
   const toggleFlash = async () => {
     try {
@@ -96,39 +65,40 @@ const LiveCameraScreen = ({ navigation }) => {
     }
   };
 
-  return (
-    <View style={styles.container}>
-      {loading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator color="#0000ff" />
-          <Text>Cargando transmisión...</Text>
-        </View>
-      )}
+  const captureImage = async () => {
+    try {
+      await set(ref(realtimeDb, "capture"), { pressed: !capturePressed });
+      console.log("📸 Solicitud de captura enviada");
+    } catch (error) {
+      console.error("❌ Error al solicitar captura:", error);
+    }
+  };
 
-      {error ? (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-          <Button title="Reintentar" onPress={() => setLoading(true)} />
-        </View>
-      ) : (
-        <CameraComponent
-          cameraUrl={cameraUrl}
-          onLoad={handleLoad}
-          onError={handleError}
-        />
-      )}
-      <View style={{ marginVertical: 20 }}>
+  return (
+    <ScrollView contentContainerStyle={styles.scrollContainer}>
+      <CameraComponent
+        cameraUrl={cameraUrl}
+      />
+      <View style={styles.buttonContainer}>
         <Button title="FLASH LIGHT 📸" onPress={toggleFlash} />
+        <Button title="CAPTURAR IMAGEN 📷" onPress={captureImage} />
       </View>
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
+  scrollContainer: {
+    flexGrow: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  webContainer: {
+    width: '100%',
+    maxHeight: '80vh', // Permite que haya espacio debajo
+    display: 'flex',
+    justifyContent: 'center',
   },
   cameraFeed: {
     flex: 1,
@@ -137,23 +107,21 @@ const styles = StyleSheet.create({
   },
   cameraFeedWeb: {
     width: '100%',
-    height: '100vh',
+    maxHeight: '80vh', // No ocupa toda la pantalla
     objectFit: 'cover',
   },
-  loadingContainer: {
-    position: 'absolute',
-    top: '50%',
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  errorContainer: {
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  errorText: {
-    color: 'red',
-    marginBottom: 10,
+  buttonContainer: {
+    marginVertical: 20,
+    ...Platform.select({
+      web: {
+        flexDirection: 'row', 
+        gap: 20, 
+      },
+      default: {
+        flexDirection: 'column',
+        gap: 20,
+      },
+    }),
   },
 });
 
