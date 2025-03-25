@@ -11,6 +11,7 @@ import NotificationScreen from './screens/NotificationScreen';
 import VisitorsScreen from './screens/VisitorsScreen';
 import LogVisitorsScreen from './screens/LogVisitorsScreen';
 import LiveCameraScreen from './screens/LiveCameraScreen';
+import SimulatorScreen from './screens/SimulatorScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import CustomDrawerContent from './components/CustomDrawerContent';
 import { UserProvider } from './components/UserContext';
@@ -133,6 +134,14 @@ function App() {
             ),
           }}
         />
+        <Drawer.Screen
+        name="Simulador"
+        component={SimulatorScreen}
+        options={{
+        drawerIcon: ({ color, size }) => (
+        <MaterialCommunityIcons name="robot" color={color} size={size} />
+      ),
+      }}/>
         <Drawer.Screen
           name="Settings"
           component={SettingsScreen}
