@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { View, Text, FlatList, StyleSheet, Animated, TouchableOpacity } from "react-native";
 import { realtimeDb } from "../constants/database";
-import { ref as databaseRef, onValue, remove } from "firebase/database";
+import { ref as databaseRef, set, onValue, remove } from "firebase/database";
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { RectButton } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
@@ -11,6 +11,10 @@ const VisitorsScreen = ({ route, navigation }) => {
   const [displayedVisitors, setDisplayedVisitors] = useState(new Set());
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
+  const triggerVibration = () => {
+    const vibrationRef = databaseRef(realtimeDb, "vibration");
+    set(vibrationRef, { vibrate: true }); 
+  };
 
   useEffect(() => {
     const visitorsRef = databaseRef(realtimeDb, "attendance"); // Referencia a la base de datos

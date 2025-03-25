@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, Image, Alert, ActivityIndicator, Platform } from "react-native";
+import { View, Text, StyleSheet, ScrollView, Image, Alert, ActivityIndicator, Platform, Modal, TouchableOpacity } from "react-native";
 import { Input, Button, Icon, Slider } from "react-native-elements";
 import * as ImagePicker from "expo-image-picker";
 import { storage, realtimeDb } from "../constants/database";
-import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
-import { ref as databaseRef, set, remove } from "firebase/database";
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject, listAll } from "firebase/storage";
+import { ref as databaseRef, set, remove, push, get } from "firebase/database";
 
 const LogVisitorsScreen = () => {
   const [name, setName] = useState("");
@@ -12,6 +12,8 @@ const LogVisitorsScreen = () => {
   const [previewImageUrl, setPreviewImageUrl] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [priority, setPriority] = useState(1);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
 
   const pickImage = async () => {
     try {
@@ -91,13 +93,14 @@ const LogVisitorsScreen = () => {
     setPreviewImageUrl(imageUri);
   };
 
-  const uploadImageToFirebase = async (uri) => {
+  const uploadImageToFirebase = async (uri, fileName) => {
     try {
       setUploading(true);
       const response = await fetch(uri);
       const blob = await response.blob();
-      const fileName = `photos/${encodeURIComponent(name)}.jpg`;
+      
       const imageRef = storageRef(storage, fileName);
+      
       await uploadBytes(imageRef, blob);
       const downloadUrl = await getDownloadURL(imageRef);
       setUploading(false);
@@ -108,17 +111,48 @@ const LogVisitorsScreen = () => {
       return null;
     }
   };
-
-  const saveVisitorToDatabase = async (downloadUrl) => {
+  
+  const generateUniqueFileName = async (baseName) => {
+    const sanitizedName = baseName.replace(/\//g, '-');
+    const photosRef = storageRef(storage, 'photos');
+    
     try {
-      const visitorRef = databaseRef(realtimeDb, `visitors/${name}`);
-      await set(visitorRef, {
+      const listResult = await listAll(photosRef);
+      let count = 1;
+      let fileName = `photos/${sanitizedName}_${count}.jpg`;
+      
+      // Verificar si el nombre ya existe y encontrar el siguiente disponible
+      const existingFiles = listResult.items.map(item => item.name);
+      while (existingFiles.includes(fileName.split('/')[1])) {
+        count++;
+        fileName = `photos/${sanitizedName}_${count}.jpg`;
+      }
+      
+      return fileName;
+    } catch (error) {
+      console.error("Error listando archivos:", error);
+      // Si hay error al listar, usar timestamp como fallback
+      return `photos/${sanitizedName}_${Date.now()}.jpg`;
+    }
+  };
+
+  const saveVisitorToDatabase = async (downloadUrl, fileName) => {
+    try {
+      const visitorsRef = databaseRef(realtimeDb, 'visitors');
+      const newVisitorRef = push(visitorsRef);
+      
+      await set(newVisitorRef, {
         name: name,
         imageUrl: downloadUrl,
-        priority: priority,
+        imagePath: fileName, // Guardamos la ruta del archivo para poder eliminarlo después
+        priority: priority === 0 ? "low" : priority === 1 ? "medium" : "high",
+        timestamp: Date.now(),
       });
+      
+      return newVisitorRef.key; // Retornamos el ID único generado
     } catch (error) {
       console.error("Error guardando en RTDB:", error);
+      throw error;
     }
   };
 
@@ -128,16 +162,29 @@ const LogVisitorsScreen = () => {
       return;
     }
 
-    const uploadedImageUrl = await uploadImageToFirebase(imageUrl);
-    if (uploadedImageUrl) {
-      await saveVisitorToDatabase(uploadedImageUrl);
-      Alert.alert("Éxito", "Visitante registrado correctamente!");
-      setName("");
-      setImageUrl(null);
-      setPreviewImageUrl(null);
-      setPriority(1);
-    } else {
-      Alert.alert("Error", "Error al subir la imagen. Intenta de nuevo.");
+    try {
+      // Generar un nombre de archivo único
+      const fileName = await generateUniqueFileName(name);
+      
+      // Subir la imagen con el nombre único
+      const uploadedImageUrl = await uploadImageToFirebase(imageUrl, fileName);
+      
+      if (uploadedImageUrl) {
+        // Guardar en la base de datos
+        await saveVisitorToDatabase(uploadedImageUrl, fileName);
+        
+        setModalMessage("Visitante registrado correctamente!");
+        setShowSuccessModal(true);
+        setName("");
+        setImageUrl(null);
+        setPreviewImageUrl(null);
+        setPriority(1);
+      } else {
+        Alert.alert("Error", "Error al subir la imagen. Intenta de nuevo.");
+      }
+    } catch (error) {
+      console.error("Error en el registro:", error);
+      Alert.alert("Error", "Ocurrió un error al registrar el visitante. Intenta de nuevo.");
     }
   };
 
@@ -148,28 +195,52 @@ const LogVisitorsScreen = () => {
     }
   
     try {
-      // Eliminar el visitante de la base de datos
-      const visitorRef = databaseRef(realtimeDb, `visitors/${name}`);
-      await remove(visitorRef);
-  
-      // Intentar eliminar la imagen del storage si existe
-      try {
-        const imageRef = storageRef(storage, `photos/${encodeURIComponent(name)}.jpg`);
-        await deleteObject(imageRef);
-      } catch (error) {
-        console.log("No se encontró una imagen asociada al visitante o ya fue eliminada.");
+      // Buscar todos los visitantes con ese nombre
+      const visitorsRef = databaseRef(realtimeDb, 'visitors');
+      const snapshot = await get(visitorsRef);
+      
+      if (!snapshot.exists()) {
+        Alert.alert("Error", "No se encontraron visitantes para eliminar.");
+        return;
       }
-  
-      Alert.alert("Éxito", "Visitante eliminado correctamente.");
-      setName("");
-      setImageUrl(null);
-      setPreviewImageUrl(null);
+      
+      const visitors = snapshot.val();
+      let deletedCount = 0;
+      
+      // Eliminar cada visitante con ese nombre
+      for (const [key, visitor] of Object.entries(visitors)) {
+        if (visitor.name === name) {
+          // Eliminar de la base de datos
+          await remove(databaseRef(realtimeDb, `visitors/${key}`));
+          
+          // Eliminar la imagen del storage si existe
+          if (visitor.imagePath) {
+            try {
+              const imageRef = storageRef(storage, visitor.imagePath);
+              await deleteObject(imageRef);
+            } catch (error) {
+              console.log("No se encontró la imagen asociada o ya fue eliminada.");
+            }
+          }
+          
+          deletedCount++;
+        }
+      }
+      
+      if (deletedCount > 0) {
+        setModalMessage(`Se eliminaron ${deletedCount} registros del visitante ${name}.`);
+        setShowSuccessModal(true);
+        setName("");
+        setImageUrl(null);
+        setPreviewImageUrl(null);
+      } else {
+        Alert.alert("Error", `No se encontraron visitantes con el nombre ${name}.`);
+      }
     } catch (error) {
       console.error("Error eliminando visitante:", error);
       Alert.alert("Error", "No se pudo eliminar el visitante. Intenta de nuevo.");
     }
   };
-
 
   const handleUpdatePriority = async () => {
     if (!name) {
@@ -178,14 +249,33 @@ const LogVisitorsScreen = () => {
     }
 
     try {
-      const visitorRef = databaseRef(realtimeDb, `visitors/${name}`);
-      await set(visitorRef, {
-        name: name,
-        imageUrl: imageUrl, 
-        priority: priority, 
-      });
-
-      Alert.alert("Éxito", "Prioridad del visitante actualizada correctamente.");
+      // Buscar todos los visitantes con ese nombre
+      const visitorsRef = databaseRef(realtimeDb, 'visitors');
+      const snapshot = await get(visitorsRef);
+      
+      if (!snapshot.exists()) {
+        Alert.alert("Error", "No se encontraron visitantes para actualizar.");
+        return;
+      }
+      
+      const visitors = snapshot.val();
+      let updatedCount = 0;
+      
+      // Actualizar cada visitante con ese nombre
+      for (const [key, visitor] of Object.entries(visitors)) {
+        if (visitor.name === name) {
+          await set(databaseRef(realtimeDb, `visitors/${key}/priority`), 
+                   priority === 0 ? "low" : priority === 1 ? "medium" : "high");
+          updatedCount++;
+        }
+      }
+      
+      if (updatedCount > 0) {
+        setModalMessage(`Se actualizó la prioridad de ${updatedCount} registros del visitante ${name}.`);
+        setShowSuccessModal(true);
+      } else {
+        Alert.alert("Error", `No se encontraron visitantes con el nombre ${name}.`);
+      }
     } catch (error) {
       console.error("Error actualizando prioridad:", error);
       Alert.alert("Error", "No se pudo actualizar la prioridad. Intenta de nuevo.");
@@ -221,6 +311,28 @@ const LogVisitorsScreen = () => {
       />
     );
   };
+
+  const SuccessModal = () => (
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={showSuccessModal}
+      onRequestClose={() => setShowSuccessModal(false)}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <Icon name="check-circle" type="material" color="#4CAF50" size={60} />
+          <Text style={styles.modalText}>{modalMessage}</Text>
+          <TouchableOpacity
+            style={styles.modalButton}
+            onPress={() => setShowSuccessModal(false)}
+          >
+            <Text style={styles.modalButtonText}>Aceptar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
 
   return (
     <View style={styles.container}>
@@ -264,10 +376,10 @@ const LogVisitorsScreen = () => {
         <Button
           title="Registrar usuario en la base de datos"
           onPress={handleSubmit}
-          buttonStyle={styles.button, { backgroundColor: "#0bb4bf" }}
+          buttonStyle={[styles.button, { backgroundColor: "#0bb4bf" }]}
           icon={{ name: "cloud-upload", type: "material", size: 20, color: "white" }}
         />
-       <Button
+        <Button
           title="Eliminar visitante de la base de datos"
           onPress={handleDeleteVisitor}
           buttonStyle={[styles.button, { backgroundColor: "#ff4444" }]}
@@ -280,6 +392,7 @@ const LogVisitorsScreen = () => {
           icon={{ name: "update", type: "material", size: 20, color: "white" }}
         />
       </ScrollView>
+      <SuccessModal />
     </View>
   );
 };
@@ -343,6 +456,35 @@ const styles = StyleSheet.create({
   webSlider: {
     width: "100%",
     marginTop: 10,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalContent: {
+    backgroundColor: "white",
+    padding: 25,
+    borderRadius: 10,
+    alignItems: "center",
+    width: "80%",
+  },
+  modalText: {
+    fontSize: 18,
+    marginVertical: 15,
+    textAlign: "center",
+  },
+  modalButton: {
+    backgroundColor: "#008CBA",
+    padding: 10,
+    borderRadius: 5,
+    width: "100%",
+    alignItems: "center",
+  },
+  modalButtonText: {
+    color: "white",
+    fontSize: 16,
   },
 });
 

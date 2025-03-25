@@ -1,13 +1,15 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { useUserContext } from '../components/UserContext'; 
+import React, { useState, useRef } from 'react';
+import { View, Text, StyleSheet, Button, Animated } from 'react-native';
+import { useUserContext } from '../components/UserContext';
+import { realtimeDb } from '../constants/database';
+import { ref, set } from "firebase/database";
 
 const HomeScreen = ({ navigation }) => {
-  const { displayName } = useUserContext(); 
+  const { displayName } = useUserContext();
 
   return (
     <View style={styles.container}>
-      <Text style={styles.welcomeText}>Bienvenido, {displayName || 'User'}</Text>
+      <Text style={styles.welcomeText}>Bienvenido, {displayName || 'Usuario'}</Text>
     </View>
   );
 };
@@ -16,11 +18,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+    justifyContent: 'flex-start',
+    backgroundColor: '#f5f5f5',
   },
   welcomeText: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 30,
+    textAlign: 'center',
+    color: '#333',
   },
 });
 
