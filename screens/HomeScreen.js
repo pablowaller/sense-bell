@@ -9,7 +9,7 @@ const HomeScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.welcomeText}>Bienvenido, {displayName || 'Usuario'}</Text>
+      <Text style={styles.welcomeText}>¡Bienvenido, {displayName || 'Usuario'} a Sense-Bell!</Text>
     </View>
   );
 };

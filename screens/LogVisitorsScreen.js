@@ -131,7 +131,7 @@ const LogVisitorsScreen = () => {
       return fileName;
     } catch (error) {
       console.error("Error listando archivos:", error);
-      // Si hay error al listar, usar timestamp como fallback
+
       return `photos/${sanitizedName}_${Date.now()}.jpg`;
     }
   };
@@ -144,12 +144,12 @@ const LogVisitorsScreen = () => {
       await set(newVisitorRef, {
         name: name,
         imageUrl: downloadUrl,
-        imagePath: fileName, // Guardamos la ruta del archivo para poder eliminarlo después
+        imagePath: fileName, 
         priority: priority === 0 ? "low" : priority === 1 ? "medium" : "high",
         timestamp: Date.now(),
       });
       
-      return newVisitorRef.key; // Retornamos el ID único generado
+      return newVisitorRef.key; 
     } catch (error) {
       console.error("Error guardando en RTDB:", error);
       throw error;
@@ -163,16 +163,14 @@ const LogVisitorsScreen = () => {
     }
 
     try {
-      // Generar un nombre de archivo único
+
       const fileName = await generateUniqueFileName(name);
       
-      // Subir la imagen con el nombre único
       const uploadedImageUrl = await uploadImageToFirebase(imageUrl, fileName);
       
       if (uploadedImageUrl) {
-        // Guardar en la base de datos
         await saveVisitorToDatabase(uploadedImageUrl, fileName);
-        
+        await set(databaseRef(realtimeDb, 'new_face_flag'), true);
         setModalMessage("Visitante registrado correctamente!");
         setShowSuccessModal(true);
         setName("");
@@ -195,7 +193,7 @@ const LogVisitorsScreen = () => {
     }
   
     try {
-      // Buscar todos los visitantes con ese nombre
+
       const visitorsRef = databaseRef(realtimeDb, 'visitors');
       const snapshot = await get(visitorsRef);
       
@@ -207,13 +205,13 @@ const LogVisitorsScreen = () => {
       const visitors = snapshot.val();
       let deletedCount = 0;
       
-      // Eliminar cada visitante con ese nombre
+
       for (const [key, visitor] of Object.entries(visitors)) {
         if (visitor.name === name) {
-          // Eliminar de la base de datos
+
           await remove(databaseRef(realtimeDb, `visitors/${key}`));
           
-          // Eliminar la imagen del storage si existe
+
           if (visitor.imagePath) {
             try {
               const imageRef = storageRef(storage, visitor.imagePath);
@@ -249,7 +247,7 @@ const LogVisitorsScreen = () => {
     }
 
     try {
-      // Buscar todos los visitantes con ese nombre
+
       const visitorsRef = databaseRef(realtimeDb, 'visitors');
       const snapshot = await get(visitorsRef);
       
@@ -261,7 +259,6 @@ const LogVisitorsScreen = () => {
       const visitors = snapshot.val();
       let updatedCount = 0;
       
-      // Actualizar cada visitante con ese nombre
       for (const [key, visitor] of Object.entries(visitors)) {
         if (visitor.name === name) {
           await set(databaseRef(realtimeDb, `visitors/${key}/priority`), 

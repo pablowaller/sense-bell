@@ -27,19 +27,18 @@ const VisitorsScreen = ({ route, navigation }) => {
         }));
         const newVisitors = visitorsList.reverse();
 
-        // Identificar nuevos visitantes
         const newVisitorIds = newVisitors.map((visitor) => visitor.id);
         const currentDisplayedIds = Array.from(displayedVisitors);
         const addedVisitors = newVisitorIds.filter((id) => !currentDisplayedIds.includes(id));
 
-        // Aplicar fading solo a los nuevos visitantes
+  
         if (addedVisitors.length > 0) {
           Animated.timing(fadeAnim, {
             toValue: 1,
             duration: 500,
             useNativeDriver: true,
           }).start(() => {
-            // Agregar los nuevos IDs al estado de visitantes mostrados
+
             setDisplayedVisitors(new Set([...currentDisplayedIds, ...addedVisitors]));
           });
         }
@@ -50,7 +49,7 @@ const VisitorsScreen = ({ route, navigation }) => {
       }
     });
 
-    return () => unsubscribe(); // Limpiar la suscripción al desmontar el componente
+    return () => unsubscribe();
   }, [displayedVisitors]);
 
   useEffect(() => {
@@ -58,7 +57,7 @@ const VisitorsScreen = ({ route, navigation }) => {
       const visitorsRef = databaseRef(realtimeDb, "attendance");
       remove(visitorsRef).then(() => {
         setVisitors([]);
-        setDisplayedVisitors(new Set()); // Limpiar los visitantes mostrados
+        setDisplayedVisitors(new Set()); 
       });
     }
   }, [route.params?.deleteAll]);
@@ -90,17 +89,24 @@ const VisitorsScreen = ({ route, navigation }) => {
     );
   };
 
+  const cleanName = (name) => {
+    if (!name) return '';
+    let cleaned = name.replace(/%20/g, ' ');
+    cleaned = cleaned.replace(/[_\d%]/g, ' ');
+    return cleaned.replace(/\s+/g, ' ').trim();
+  };
+
   const renderItem = ({ item }) => (
     <Swipeable
       renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.id)}
     >
       <Animated.View
         style={{
-          opacity: displayedVisitors.has(item.id) ? 1 : fadeAnim, // Aplicar fading solo a nuevos visitantes
+          opacity: displayedVisitors.has(item.id) ? 1 : fadeAnim, 
         }}
       >
         <View style={styles.visitorItem}>
-          <Text style={styles.visitorName}>🔹 {item.name} está en la puerta!</Text>
+          <Text style={styles.visitorName}>🔹 {cleanName(item.name)} está en la puerta!</Text>
           <Text style={styles.timestamp}>{item.timestamp}</Text>
         </View>
       </Animated.View>

@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Button, StyleSheet, Platform, ScrollView, Text, Animated
+  View, Button, StyleSheet, Platform, ScrollView, Text, Animated, 
+  ActivityIndicator, Vibration
 } from 'react-native';
 import { WebView as RNWebView } from 'react-native-webview';
 import WebWebView from 'react-native-web-webview';
 import { realtimeDb } from '../constants/database';
 import { ref, set, onValue } from "firebase/database";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const WebView = Platform.OS === 'web' ? WebWebView : RNWebView;
 
@@ -13,23 +15,27 @@ const CameraComponent = React.memo(({ cameraUrl, onLoad, onError, onStreamStoppe
   const lastUpdateRef = useRef(Date.now());
   const timerRef = useRef(null);
   const errorCountRef = useRef(0);
+  const heartbeatRef = useRef(null);
 
   const updateActivity = () => {
     lastUpdateRef.current = Date.now();
   };
 
   useEffect(() => {
+    heartbeatRef.current = setInterval(updateActivity, 5000);
+
     const checkStreamActivity = () => {
       const now = Date.now();
-      if (now - lastUpdateRef.current > 10000) {
+      if (now - lastUpdateRef.current > 30000) { 
         onStreamStopped();
       }
     };
 
-    timerRef.current = setInterval(checkStreamActivity, 2000);
+    timerRef.current = setInterval(checkStreamActivity, 5000);
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
+      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
     };
   }, [onStreamStopped]);
 
@@ -40,11 +46,17 @@ const CameraComponent = React.memo(({ cameraUrl, onLoad, onError, onStreamStoppe
     }
   };
 
+  const handleLoadProgress = ({ nativeEvent }) => {
+    if (nativeEvent.progress > 0) {
+      updateActivity();
+    }
+  };
+
   if (Platform.OS === 'web') {
     return (
       <div style={styles.webContainer}>
         <img
-          src={cameraUrl}
+          src={`${cameraUrl}?t=${Date.now()}`}
           style={styles.cameraFeedWeb}
           alt="Live Camera Feed"
           onError={handleError}
@@ -61,7 +73,7 @@ const CameraComponent = React.memo(({ cameraUrl, onLoad, onError, onStreamStoppe
 
   return (
     <WebView
-      key="camera-stream"
+      key={`camera-stream-${Date.now()}`}
       source={{ uri: cameraUrl }}
       style={styles.cameraFeed}
       scrollEnabled={false}
@@ -73,57 +85,84 @@ const CameraComponent = React.memo(({ cameraUrl, onLoad, onError, onStreamStoppe
       }}
       onError={handleError}
       onLoadStart={updateActivity}
+      onLoadProgress={handleLoadProgress}
       mixedContentMode="always"
       allowsInlineMediaPlayback={true}
       mediaPlaybackRequiresUserAction={false}
+      startInLoadingState={true}
     />
   );
 });
 
 const LiveCameraScreen = ({ navigation }) => {
-  const [captureStatus, setCaptureStatus] = useState("");
   const [isStreamAvailable, setIsStreamAvailable] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const captureRef = useRef(ref(realtimeDb, "capture")).current;
+  const flashRef = useRef(ref(realtimeDb, "flash")).current;
+  const [flashEnabled, setFlashEnabled] = useState(false);
+  const [isFlashUpdating, setIsFlashUpdating] = useState(false);
+  const ipRef = useRef(ref(realtimeDb, "currentIP/ip")).current;
+  const [streamUrl, setStreamUrl] = useState("");
+  const flashUpdateRef = useRef(null);
 
+  // Cargar estado persistente del flash
   useEffect(() => {
-    const unsubscribeCapture = onValue(captureRef, (snapshot) => {
-      if (snapshot.exists() && snapshot.val().pressed) {
-        setCaptureStatus("📸 Captura solicitada");
-        startFadeAnimation();
-        setTimeout(() => set(ref(realtimeDb, "capture"), { pressed: false }), 1000);
+    const loadPersistedState = async () => {
+      try {
+        const savedState = await AsyncStorage.getItem('flashState');
+        if (savedState !== null) {
+          const initialState = savedState === 'true';
+          setFlashEnabled(initialState);
+          await set(flashRef, { enabled: initialState });
+        }
+      } catch (error) {
+        console.error("Error al cargar estado persistente:", error);
       }
-    });
-
-    return () => unsubscribeCapture();
+    };
+    
+    loadPersistedState();
   }, []);
 
-  const startFadeAnimation = () => {
-    Animated.sequence([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.delay(1000),
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 500,
-        useNativeDriver: true,
-      })
-    ]).start(() => setCaptureStatus(""));
-  };
+  useEffect(() => {
+    // Inicializar flash como false al montar el componente
+    const initializeFlash = async () => {
+      try {
+        await set(flashRef, { enabled: false });
+        await AsyncStorage.setItem('flashState', 'false');
+        setFlashEnabled(false);
+      } catch (error) {
+        console.error("Error inicializando flash:", error);
+      }
+    };
+  
+    initializeFlash();
+  
+    // Resto de la inicialización...
+    const unsubscribeIP = onValue(ipRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const ip = snapshot.val();
+        setStreamUrl(`http://${ip}/stream?t=${Date.now()}`);
+      } else {
+        setStreamUrl(`http://192.168.0.145/stream?t=${Date.now()}`);
+      }
+    });
+    
+    const unsubscribeFlash = onValue(flashRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const currentFlashState = snapshot.val().enabled;
 
-  const cameraUrl = 'http://192.168.0.145/stream';
-
-  const captureImage = async () => {
-    try {
-      await set(captureRef, { pressed: true });
-    } catch (error) {
-      console.error("Error al solicitar captura:", error);
-    }
-  };
+        if (currentFlashState !== flashEnabled) {
+          setFlashEnabled(currentFlashState);
+          AsyncStorage.setItem('flashState', currentFlashState.toString())
+            .catch(e => console.error("Error guardando estado:", e));
+        }
+      }
+    });
+  
+    return () => {
+      unsubscribeIP();
+      unsubscribeFlash();
+    };
+  }, []);
 
   const handleStreamLoad = () => {
     setIsStreamAvailable(true);
@@ -132,7 +171,11 @@ const LiveCameraScreen = ({ navigation }) => {
 
   const handleStreamError = () => {
     setIsStreamAvailable(false);
-    attemptReconnect();
+    if (retryCount < 2) {
+      setTimeout(attemptReconnect, 1000);
+    } else {
+      attemptReconnect();
+    }
   };
 
   const handleStreamStopped = () => {
@@ -145,17 +188,61 @@ const LiveCameraScreen = ({ navigation }) => {
       const timer = setTimeout(() => {
         setRetryCount(prev => prev + 1);
         setIsStreamAvailable(true);
-      }, 3000);
+        setStreamUrl(prevUrl => {
+          const newUrl = prevUrl.replace(/\?t=\d+/, '') + `?t=${Date.now()}`;
+          return newUrl;
+        });
+      }, retryCount < 2 ? 1000 : 5000);
       
       return () => clearTimeout(timer);
     }
   };
 
+  const handleManualRetry = () => {
+    Vibration.vibrate(50); // Feedback háptico
+    setRetryCount(0);
+    setIsStreamAvailable(true);
+    setStreamUrl(prevUrl => {
+      const newUrl = prevUrl.replace(/\?t=\d+/, '') + `?t=${Date.now()}`;
+      return newUrl;
+    });
+  };
+
+  const toggleFlash = async () => {
+    const newState = !flashEnabled;
+    Vibration.vibrate(50);
+    
+    if (flashUpdateRef.current) {
+      clearTimeout(flashUpdateRef.current);
+    }
+    
+    setFlashEnabled(newState);
+    setIsFlashUpdating(true);
+    
+    try {
+      await set(flashRef, { enabled: newState });
+      await AsyncStorage.setItem('flashState', newState.toString());
+    } catch (error) {
+      console.error("Error al cambiar flash:", error);
+      setFlashEnabled(!newState);
+    } finally {
+      setIsFlashUpdating(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (flashUpdateRef.current) {
+        clearTimeout(flashUpdateRef.current);
+      }
+    };
+  }, []);
+
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer}>
       {isStreamAvailable ? (
         <CameraComponent
-          cameraUrl={cameraUrl}
+          cameraUrl={streamUrl}
           onLoad={handleStreamLoad}
           onError={handleStreamError}
           onStreamStopped={handleStreamStopped}
@@ -168,27 +255,29 @@ const LiveCameraScreen = ({ navigation }) => {
           ) : (
             <Button 
               title="Reintentar conexión" 
-              onPress={() => {
-                setRetryCount(0);
-                setIsStreamAvailable(true);
-              }} 
+              onPress={handleManualRetry} 
             />
           )}
         </View>
       )}
       
       <View style={styles.buttonContainer}>
-        <Button 
-          title="CAPTURAR IMAGEN 📷" 
-          onPress={captureImage} 
-        />
+        <View style={styles.buttonWrapper}>
+          <Button 
+            title={flashEnabled ? "DESACTIVAR FLASH 🔦" : "ACTIVAR FLASH 📸"} 
+            onPress={toggleFlash} 
+            color={flashEnabled ? "#FF0000" : "#32CD32"}
+            disabled={isFlashUpdating}
+          />
+          {isFlashUpdating && (
+            <ActivityIndicator 
+              style={styles.loadingIndicator} 
+              size="small" 
+              color={flashEnabled ? "#FF0000" : "#32CD32"} 
+            />
+          )}
+        </View>
       </View>
-
-      {captureStatus ? (
-        <Animated.View style={[styles.modalContainer, { opacity: fadeAnim }]}>
-          <Text style={styles.modalText}>{captureStatus}</Text>
-        </Animated.View>
-      ) : null}
     </ScrollView>
   );
 };
@@ -221,22 +310,15 @@ const styles = StyleSheet.create({
     marginVertical: 20,
     flexDirection: Platform.OS === 'web' ? 'row' : 'column',
     gap: 20,
-  },
-  modalContainer: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: [{ translateX: -50 }, { translateY: -50 }],
-    backgroundColor: 'rgba(0, 128, 0, 0.8)',
-    padding: 20,
-    borderRadius: 10,
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  modalText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold',
+  buttonWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  loadingIndicator: {
+    marginLeft: 10,
   },
   noStreamContainer: {
     alignItems: 'center',

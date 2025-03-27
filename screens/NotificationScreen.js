@@ -10,7 +10,7 @@ import { useUserContext } from '../components/UserContext';
 const NotificationScreen = ({ route }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadNotifications, setUnreadNotifications] = useState(new Set());
-  const [animations, setAnimations] = useState(new Map()); // Mapa para almacenar animaciones
+  const [animations, setAnimations] = useState(new Map()); 
   const { isHapticEnabled, incrementUnreadNotifications, resetUnreadNotifications } = useUserContext();
 
   useEffect(() => {
@@ -25,25 +25,22 @@ const NotificationScreen = ({ route }) => {
         }));
         const reversedList = notificationList.reverse();
 
-        // Verificar si hay nuevas notificaciones
         const newNotifications = reversedList.filter(
           (notification) => !notifications.some((n) => n.id === notification.id)
         );
 
-        // Incrementar el contador solo para nuevas notificaciones
         if (newNotifications.length > 0) {
           incrementUnreadNotifications(newNotifications.length);
           if (isHapticEnabled) {
             Vibration.vibrate(500);
           }
 
-          // Crear animaciones para las nuevas notificaciones
+
           const newAnimations = new Map(animations);
           newNotifications.forEach((notification) => {
-            const opacity = new Animated.Value(0); // Iniciar con opacidad 0
+            const opacity = new Animated.Value(0); 
             newAnimations.set(notification.id, opacity);
 
-            // Iniciar la animación de fading in
             Animated.timing(opacity, {
               toValue: 1,
               duration: 1000,
@@ -53,10 +50,8 @@ const NotificationScreen = ({ route }) => {
           setAnimations(newAnimations);
         }
 
-        // Actualizar la lista de notificaciones
         setNotifications(reversedList);
 
-        // Marcar las nuevas notificaciones como no leídas
         const newUnreadNotifications = new Set(unreadNotifications);
         newNotifications.forEach((notification) => {
           newUnreadNotifications.add(notification.id);
@@ -91,7 +86,6 @@ const NotificationScreen = ({ route }) => {
         setUnreadNotifications(newUnreadNotifications);
       }
 
-      // Eliminar la animación asociada a la notificación
       const newAnimations = new Map(animations);
       newAnimations.delete(id);
       setAnimations(newAnimations);
@@ -123,7 +117,7 @@ const NotificationScreen = ({ route }) => {
   };
 
   const renderItem = ({ item }) => {
-    const opacity = animations.get(item.id) || new Animated.Value(1); // Usar la animación individual
+    const opacity = animations.get(item.id) || new Animated.Value(1); 
 
     return (
       <Swipeable
@@ -140,7 +134,7 @@ const NotificationScreen = ({ route }) => {
 
   return (
     <View style={styles.container}>
-      {/* Lista de notificaciones */}
+   
       {notifications.length === 0 ? (
         <Text style={styles.emptyMessage}>Aún no hay notificaciones.</Text>
       ) : (
