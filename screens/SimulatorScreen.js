@@ -7,45 +7,41 @@ const SimulatorScreen = ({ navigation }) => {
   const [notificationStatus, setNotificationStatus] = useState("");
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const notificationsRef = {
-    priorityLow: useRef(ref(realtimeDb, "doorbell/priority_low")).current,
-    priorityMedium: useRef(ref(realtimeDb, "doorbell/priority_medium")).current,
-    priorityHigh: useRef(ref(realtimeDb, "doorbell/priority_high")).current
-  };  
-
   const activateNotification = async (type) => {
     try {
-      let message = "";
-      let refToUpdate = null;
+      let updates = {
+        priority_low: false,
+        priority_medium: false,
+        priority_high: false
+      };
   
       switch(type) {
         case 'low':
-          refToUpdate = notificationsRef.priorityLow;
-          message = "✅ Prioridad Baja activada";
+          updates.priority_low = true;
           break;
         case 'medium':
-          refToUpdate = notificationsRef.priorityMedium;
-          message = "✅ Prioridad Media activada";
+          updates.priority_medium = true;
           break;
         case 'high':
-          refToUpdate = notificationsRef.priorityHigh;
-          message = "✅ Prioridad Alta activada";
+          updates.priority_high = true;
+          break;
+        case 'pressed':
+          updates.pressed = true;
           break;
       }
   
-      if (refToUpdate) {
-        await set(refToUpdate, true);
-        
-        setTimeout(async () => {
-          await set(refToUpdate, false);
-        }, 10000);
-      }
-  
-      setNotificationStatus(message);
-      startNotificationAnimation();
+      await set(ref(realtimeDb, "doorbell"), updates);
+      
+      setTimeout(async () => {
+        await set(ref(realtimeDb, "doorbell"), {
+          priority_low: false,
+          priority_medium: false,
+          priority_high: false,
+          pressed: false
+        });
+      }, 2000); 
     } catch (error) {
-      console.error(`Error al activar notificación ${type}:`, error);
-      setNotificationStatus(`❌ Error al activar ${type}`);
+      console.error("Error:", error);
     }
   };
   
@@ -60,16 +56,24 @@ const SimulatorScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
+      {/* Botón naranja redondo arriba de todo */}
+      <TouchableOpacity 
+        style={styles.orangeButton}
+        onPress={() => activateNotification('pressed')}
+      >
+        <Text style={styles.orangeButtonText}>🔔</Text>
+      </TouchableOpacity>
+
       <Text style={styles.sectionTitle}>Simulación de Eventos a través de Pulsaciones:</Text>
       <View style={styles.buttonColumn}>
         <TouchableOpacity style={[styles.button, styles.highPriority]} onPress={() => activateNotification('high')}>
-          <Text style={styles.buttonText}>PRIORIDAD ALTA 🟢</Text>
+          <Text style={styles.buttonText}>PRIORIDAD ALTA 🔴</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.button, styles.mediumPriority]} onPress={() => activateNotification('medium')}>
           <Text style={styles.buttonText}>PRIORIDAD MEDIA 🟡</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.button, styles.lowPriority]} onPress={() => activateNotification('low')}>
-          <Text style={styles.buttonText}>PRIORIDAD BAJA 🔴</Text>
+          <Text style={styles.buttonText}>PRIORIDAD BAJA 🟢</Text>
         </TouchableOpacity>
       </View>
       {notificationStatus ? (
@@ -90,6 +94,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
     paddingTop: 50,
   },
+  orangeButton: {
+    position: 'absolute',
+    top: 10,
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FFA500',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 5,
+    zIndex: 10,
+  },
+  orangeButtonText: {
+    fontSize: 24,
+  },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
@@ -101,6 +125,7 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     alignItems: 'center',
     width: '100%',
+    marginTop: 30,
   },
   button: {
     width: '80%',
@@ -119,13 +144,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: 'white',
   },
-  lowPriority: {
+  highPriority: {
     backgroundColor: '#FF0000',
   },
   mediumPriority: {
     backgroundColor: '#FFA500',
   },
-  highPriority: {
+  lowPriority: {
     backgroundColor: '#32CD32',
   },
   modalContainer: {

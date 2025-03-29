@@ -104,7 +104,6 @@ const LiveCameraScreen = ({ navigation }) => {
   const [streamUrl, setStreamUrl] = useState("");
   const flashUpdateRef = useRef(null);
 
-  // Cargar estado persistente del flash
   useEffect(() => {
     const loadPersistedState = async () => {
       try {
@@ -123,7 +122,6 @@ const LiveCameraScreen = ({ navigation }) => {
   }, []);
 
   useEffect(() => {
-    // Inicializar flash como false al montar el componente
     const initializeFlash = async () => {
       try {
         await set(flashRef, { enabled: false });
@@ -136,7 +134,6 @@ const LiveCameraScreen = ({ navigation }) => {
   
     initializeFlash();
   
-    // Resto de la inicialización...
     const unsubscribeIP = onValue(ipRef, (snapshot) => {
       if (snapshot.exists()) {
         const ip = snapshot.val();
@@ -199,7 +196,7 @@ const LiveCameraScreen = ({ navigation }) => {
   };
 
   const handleManualRetry = () => {
-    Vibration.vibrate(50); // Feedback háptico
+    Vibration.vibrate(50); 
     setRetryCount(0);
     setIsStreamAvailable(true);
     setStreamUrl(prevUrl => {

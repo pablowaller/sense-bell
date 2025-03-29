@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Platform, View, Text, Switch, Button, StyleSheet, TouchableOpacity, ScrollView, Image, Alert } from 'react-native';
+import { Platform, View, Text, Switch, Button, StyleSheet, TouchableOpacity, ScrollView, Image, Alert, Animated } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { updateProfile } from 'firebase/auth';
@@ -35,8 +35,8 @@ const registerForPushNotificationsAsync = async () => {
 
 const SettingsScreen = () => {
   const [previewImageUrl, setPreviewImageUrl] = useState(null);
-  const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [fadeAnim, setFadeAnim] = useState(new Animated.Value(0));
   const { profileImage, updateProfileImage, isHapticEnabled, setIsHapticEnabled, areNotificationsEnabled, setAreNotificationsEnabled } = useUserContext();
 
   const handleProfileImageChange = async (imageUri) => {
@@ -157,8 +157,12 @@ const SettingsScreen = () => {
   };
 
   const handleSaveSettings = () => {
-    setMessage('Settings Saved!');
-    setTimeout(() => setMessage(''), 2000);
+    // Animate the modal fade-in effect when settings are saved
+    Animated.sequence([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+      Animated.delay(2000),
+      Animated.timing(fadeAnim, { toValue: 0, duration: 500, useNativeDriver: true })
+    ]).start();
   };
 
   const handleRemoveProfileImage = async () => {
@@ -259,7 +263,11 @@ const SettingsScreen = () => {
       <View style={styles.buttonContainer}>
         <Button title="GUARDAR CONFIGURACION" onPress={handleSaveSettings} />
       </View>
-      {message ? <Text>{message}</Text> : null}
+
+      {/* Modal fade-in effect */}
+      <Animated.View style={[styles.modalContainer, { opacity: fadeAnim }]}>
+        <Text style={styles.modalText}>Settings Saved!</Text>
+      </Animated.View>
     </ScrollView>
   );
 };
@@ -314,6 +322,23 @@ const styles = StyleSheet.create({
     padding: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
+  },
+  modalContainer: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -125 }, { translateY: -50 }],
+    padding: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(36, 197, 18, 0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 250,
+  },
+  modalText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
 
