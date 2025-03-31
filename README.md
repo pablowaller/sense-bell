@@ -24,6 +24,7 @@ Key capabilities:
 
 ![example1](assets/example-1.jpg)
 ![example2](assets/example-2.png)
+![example2](assets/example-3.jpeg)
 
 ### 📹 **Live Camera**  
 - 🎥 Real-time streaming renderization from ESP32 camera module 
