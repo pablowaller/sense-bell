@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from "react";
-import { View, Text, FlatList, StyleSheet, Animated, TouchableOpacity } from "react-native";
-import { realtimeDb } from "../constants/database";
-import { ref as databaseRef, set, onValue, remove } from "firebase/database";
+import { View, Text, FlatList, StyleSheet, Animated, TouchableOpacity, Image } from "react-native";
+import { realtimeDb, storage } from "../constants/database";
+import { ref as databaseRef, onValue, remove } from "firebase/database";
+import { ref as storageRef, listAll, getDownloadURL } from "firebase/storage";
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { RectButton } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
@@ -9,15 +10,93 @@ import Swipeable from 'react-native-gesture-handler/Swipeable';
 const VisitorsScreen = ({ route, navigation }) => {
   const [visitors, setVisitors] = useState([]);
   const [displayedVisitors, setDisplayedVisitors] = useState(new Set());
+  const [photoUrls, setPhotoUrls] = useState({});
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const triggerVibration = () => {
-    const vibrationRef = databaseRef(realtimeDb, "vibration");
-    set(vibrationRef, { vibrate: true }); 
+  const normalizeName = (name) => {
+    if (!name) return '';
+
+    let normalized = name.replace(/[^a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]/g, '');
+    
+    normalized = normalized.toLowerCase()
+                          .trim()
+                          .replace(/\s+/g, ' ')
+                          .replace(/\s/g, '-');
+    
+    return normalized;
+  };
+
+  const getPhotoUrl = async (originalName) => {
+    try {
+      const normalizedSearchName = normalizeName(originalName);
+      
+      if (!normalizedSearchName) return null;
+      
+      const photosRef = storageRef(storage, 'photos');
+      const res = await listAll(photosRef);
+      
+      let bestMatchUrl = null;
+      let bestMatchScore = 0;
+      
+      for (const itemRef of res.items) {
+
+        const fileName = itemRef.name.split('.')[0];
+        const normalizedFileName = normalizeName(fileName);
+        
+        const searchParts = normalizedSearchName.split('-');
+        const fileParts = normalizedFileName.split('-');
+        
+        let matchScore = 0;
+        for (const part of searchParts) {
+          if (fileParts.includes(part)) {
+            matchScore++;
+          }
+        }
+        
+        if (matchScore > bestMatchScore) {
+          bestMatchScore = matchScore;
+          bestMatchUrl = await getDownloadURL(itemRef);
+        }
+      }
+      
+      if (bestMatchUrl) {
+        console.log(`Foto encontrada para: ${originalName}`);
+        return bestMatchUrl;
+      }
+      
+      console.log(`No se encontró foto para: ${originalName}`);
+      return null;
+    } catch (error) {
+      console.log(`Error buscando foto para ${originalName}:`, error.message);
+      return null;
+    }
   };
 
   useEffect(() => {
-    const visitorsRef = databaseRef(realtimeDb, "attendance"); // Referencia a la base de datos
+    const updatePhotoUrls = async () => {
+      const newPhotoUrls = {};
+      const updates = {};
+      
+      for (const visitor of visitors) {
+        if (!photoUrls[visitor.name]) {
+          const url = await getPhotoUrl(visitor.name);
+          if (url) {
+            newPhotoUrls[visitor.name] = url;
+            updates[visitor.name] = url;
+          }
+        }
+      }
+      
+      if (Object.keys(updates).length > 0) {
+        setPhotoUrls(prev => ({ ...prev, ...updates }));
+      }
+    };
+    
+    updatePhotoUrls();
+  }, [visitors]);
+
+  useEffect(() => {
+    const visitorsRef = databaseRef(realtimeDb, "attendance");
     const unsubscribe = onValue(visitorsRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.val();
@@ -31,14 +110,12 @@ const VisitorsScreen = ({ route, navigation }) => {
         const currentDisplayedIds = Array.from(displayedVisitors);
         const addedVisitors = newVisitorIds.filter((id) => !currentDisplayedIds.includes(id));
 
-  
         if (addedVisitors.length > 0) {
           Animated.timing(fadeAnim, {
             toValue: 1,
             duration: 500,
             useNativeDriver: true,
           }).start(() => {
-
             setDisplayedVisitors(new Set([...currentDisplayedIds, ...addedVisitors]));
           });
         }
@@ -51,16 +128,6 @@ const VisitorsScreen = ({ route, navigation }) => {
 
     return () => unsubscribe();
   }, [displayedVisitors]);
-
-  useEffect(() => {
-    if (route.params?.deleteAll) {
-      const visitorsRef = databaseRef(realtimeDb, "attendance");
-      remove(visitorsRef).then(() => {
-        setVisitors([]);
-        setDisplayedVisitors(new Set()); 
-      });
-    }
-  }, [route.params?.deleteAll]);
 
   const handleDeleteVisitor = (id) => {
     const visitorRef = databaseRef(realtimeDb, `attendance/${id}`);
@@ -106,8 +173,22 @@ const VisitorsScreen = ({ route, navigation }) => {
         }}
       >
         <View style={styles.visitorItem}>
-          <Text style={styles.visitorName}>🔹 {cleanName(item.name)} está en la puerta!</Text>
-          <Text style={styles.timestamp}>{item.timestamp}</Text>
+          <View style={styles.visitorContent}>
+            {photoUrls[item.name] ? (
+              <Image 
+                source={{ uri: photoUrls[item.name] }}
+                style={styles.visitorPhoto}
+              />
+            ) : (
+              <View style={[styles.visitorPhoto, styles.emptyPhoto]}>
+                <Icon name="user" size={20} color="#fff" />
+              </View>
+            )}
+            <View style={styles.textRow}>
+              <Text style={styles.visitorName}>{cleanName(item.name)} está en la puerta!</Text>
+              <Text style={styles.timestamp}>{item.timestamp}</Text>
+            </View>
+          </View>
         </View>
       </Animated.View>
     </Swipeable>
@@ -158,15 +239,38 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  visitorContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  visitorPhoto: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+    backgroundColor: '#ddd',
+  },
+  emptyPhoto: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0bb4bf',
+  },
+  textRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   visitorName: {
     fontSize: 16,
     fontWeight: "bold",
     color: "#333",
+    flexShrink: 1,
   },
   timestamp: {
-    fontSize: 14,
+    fontSize: 12,
     color: "#777",
-    marginTop: 5,
+    marginLeft: 8,
   },
   deleteButton: {
     backgroundColor: "#ff4444",
