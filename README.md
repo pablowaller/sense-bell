@@ -54,6 +54,7 @@ Key capabilities:
 | **Navigation**    | React Navigation (Stack + Drawer) |
 | **Database**      | Firebase Realtime Database & Storage |
 | **Storage**       | Firebase Storage |
+| **Transcriptions**| Google Speech To Text |
 | **Notifications** | Expo Notifications |
 | **State**         | Context API |
 
