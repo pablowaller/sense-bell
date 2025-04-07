@@ -1,5 +1,7 @@
 # 🏠 Sense-Bell - Smart Doorbell System  
 
+![example0](assets/example-0.png)
+
 ## 📝 Description  
 
 **Sense-Bell** is a cross-platform mobile application built with **React Native** that transforms your smartphone into a **smart doorbell and visitor management system**.  
@@ -29,12 +31,20 @@ Key capabilities:
 ### 📹 **Live Camera**  
 - 🎥 Real-time streaming renderization from ESP32 camera module 
 - 💡 Remote flash control  
-- 🔄 Automatic reconnection if stream drops  
+- 🔄 Automatic reconnection if stream drops
+
+### 🤖 **Simulation**  
+- 📳  Try and update different haptic feedback levels  
+- ⚡ Remote wearable device vibration control   
+
+### 🗣️ **Real time Transcription**  
+- 🔊 Voice recognition interface with AI powered Google Speech To Text API 
+- 📝 Real time transcriptions in any spoken language  
 
 ### ⚙️ **Settings**  
 - 👤 Profile picture customization  
 - 🔕 Notification preferences  
-- 📳 Haptic feedback toggle  
+- 📳 Mobile haptic feedback toggle  
 
 ## 🛠️ Tech Stack  
 
