@@ -1,8 +1,6 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, Button, Animated } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { useUserContext } from '../components/UserContext';
-import { realtimeDb } from '../constants/database';
-import { ref, set } from "firebase/database";
 
 const HomeScreen = ({ navigation }) => {
   const { displayName } = useUserContext();
