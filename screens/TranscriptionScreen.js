@@ -5,6 +5,7 @@ import { ref, onValue, remove } from 'firebase/database';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { RectButton } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
+import { Platform } from 'react-native';
 
 const TranscriptionScreen = ({ navigation }) => {
   const [allTranscriptions, setAllTranscriptions] = useState([]);
@@ -100,24 +101,58 @@ const TranscriptionScreen = ({ navigation }) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const getFlagEmoji = (language) => {
+  const emojiMap = {
+    'en-us': '🇬🇧',
+    'es-ar': '🇦🇷',
+    'de-de': '🇩🇪',
+    'fr-fr': '🇫🇷',
+    'pt-br': '🇧🇷',
+  };
+
+  const code = emojiMap[language] || '🇦🇷';
+
+  if (Platform.OS === 'web') {
+    const flagMap = {
+      '🇬🇧': 'https://flagcdn.com/gb.svg',
+      '🇦🇷': 'https://flagcdn.com/ar.svg',
+      '🇩🇪': 'https://flagcdn.com/de.svg',
+      '🇫🇷': 'https://flagcdn.com/fr.svg',
+      '🇧🇷': 'https://flagcdn.com/br.svg',
+    };
+    return (
+      <img src={flagMap[code]} alt={language} style={{ width: 20, height: 14, marginRight: 4 }} />
+    );
+  }
+  return code;
+};
+
   const renderItem = ({ item }) => (
-    <Swipeable
-      renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.id)}
-    >
-      <View style={styles.transcriptionItem}>
-        <View style={styles.transcriptionContent}>
-          <View style={styles.textColumn}>
+  <Swipeable
+    renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.id)}
+  >
+    <View style={styles.transcriptionItem}>
+      <View style={styles.transcriptionContent}>
+        <View style={styles.textColumn}>
+          <View style={styles.textRow}>
             <Text style={styles.transcriptionText}>
               {item.text || "No transcription available"}
             </Text>
-            <Text style={styles.timestamp}>
-              {formatTimestamp(item.timestamp)}
-            </Text>
+            {Platform.OS === 'web' ? (
+              getFlagEmoji(item.language)
+            ) : (
+              <Text style={styles.flag}>{getFlagEmoji(item.language)}</Text>
+            )}
           </View>
+          <Text style={styles.timestamp}>
+            {formatTimestamp(item.timestamp)}
+          </Text>
         </View>
       </View>
-    </Swipeable>
-  );
+    </View>
+  </Swipeable>
+);
+
 
   return (
     <View style={styles.container}>
@@ -171,6 +206,16 @@ const styles = StyleSheet.create({
   },
   textColumn: {
     flex: 1,
+  },
+  textRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 5,
+  },
+  flag: {
+    fontSize: 18,
+    marginLeft: 8,
   },
   transcriptionText: {
     fontSize: 16,
